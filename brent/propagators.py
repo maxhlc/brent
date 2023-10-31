@@ -1,5 +1,9 @@
+# Third-party imports
+import numpy as np
+
 # Orekit imports
 import orekit
+from orekit.pyhelpers import absolutedate_to_datetime
 from org.orekit.bodies import CelestialBodyFactory
 from org.orekit.forces.gravity import (
     HolmesFeatherstoneAttractionModel,
@@ -88,3 +92,26 @@ def tles_to_propagator(tles):
 
     # Return aggregate propagator
     return AggregateBoundedPropagator(propagatorMap, dateStart, dateEnd)
+
+
+def propagate(propagator, dates, frame=DEFAULT_ECI):
+    # Return propagated states
+    return [propagator.getPVCoordinates(date, frame) for date in dates]
+
+
+def pv_to_array(states):
+    # Convert dates
+    dates_ = [absolutedate_to_datetime(state.getDate()) for state in states]
+
+    # Convert states
+    states_ = np.array(
+        [
+            np.concatenate(
+                (state.getPosition().toArray(), state.getVelocity().toArray())
+            )
+            for state in states
+        ]
+    )
+
+    # Return dates and states
+    return dates_, states_
