@@ -9,6 +9,7 @@ import orekit
 from org.orekit.data import DataSource
 from org.orekit.files.sp3 import SP3Parser
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
+from org.orekit.propagation.analytical.tle import TLE
 import java.util
 
 
@@ -27,7 +28,10 @@ def load_tle(path):
     tles.drop_duplicates("EPOCH", keep="last", inplace=True)
 
     # Return filtered TLEs
-    return tles.to_dict(orient="records")
+    return [
+        TLE(tle["TLE_LINE1"], tle["TLE_LINE2"])
+        for tle in tles.to_dict(orient="records")
+    ]
 
 
 def load_sp3(path, satID):
