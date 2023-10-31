@@ -8,11 +8,14 @@ from org.orekit.forces.gravity import (
 from org.orekit.forces.gravity.potential import GravityFieldFactory
 from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit, PositionAngle
+from org.orekit.propagation.analytical import AggregateBoundedPropagator
+from org.orekit.propagation.analytical.tle import TLEPropagator
 from org.orekit.propagation.conversion import (
     NumericalPropagatorBuilder,
     DormandPrince853IntegratorBuilder,
 )
 from org.orekit.utils import IERSConventions, Constants
+import java.util
 
 # Default parameters
 DEFAULT_ECI = FramesFactory.getEME2000()
@@ -55,3 +58,33 @@ def default_propagator_builder(state):
 
     # Return propagator builder
     return propagatorBuilder
+
+
+def tles_to_propagator(tles):
+    # Check for number of TLEs
+    if len(tles) < 1:
+        raise ValueError("Insufficent number of TLEs")
+
+    # TODO: sort TLEs to ensure in order?
+
+    # Declare map for propagators
+    propagatorMap = java.util.TreeMap()
+
+    # Iterate through TLEs
+    for tle in tles:
+        # Extract epoch date
+        epoch = tle.getDate()
+
+        # Create propagator
+        propagator = TLEPropagator.selectExtrapolator(tle)
+
+        # Add to map
+        propagatorMap.put(epoch, propagator)
+
+    # Extract start and end dates
+    # TODO: review dates
+    dateStart = tles[0].getDate()
+    dateEnd = tles[-1].getDate()
+
+    # Return aggregate propagator
+    return AggregateBoundedPropagator(propagatorMap, dateStart, dateEnd)
