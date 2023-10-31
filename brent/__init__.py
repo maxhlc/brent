@@ -1,6 +1,7 @@
 # Internal imports (not dependent on initVM)
 from . import io
 from . import paths
+from . import util
 
 # Orekit imports
 import orekit
