@@ -1,4 +1,5 @@
 # Internal imports (not dependent on initVM)
+from . import frames
 from . import io
 from . import paths
 from . import util
