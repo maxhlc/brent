@@ -43,7 +43,7 @@ def main():
     sampleStates = brent.propagators.propagate(tlePropagator, sampleDates)
 
     # Create filter
-    filter = brent.filter.BatchLeastSquares(sampleStates)
+    filter = brent.filter.OrekitBatchLeastSquares(sampleStates)
 
     # Execute filter
     fitPropagator = filter.estimate()

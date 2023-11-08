@@ -9,7 +9,7 @@ from org.orekit.estimation.leastsquares import BatchLSEstimator
 from brent.propagators import default_propagator_builder
 
 
-class BatchLeastSquares:
+class OrekitBatchLeastSquares:
     def __init__(self, states):
         # Create propagator builder
         propagatorBuilder = default_propagator_builder(states[0])
