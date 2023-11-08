@@ -2,17 +2,17 @@
 import numpy as np
 
 
-def rtn(statesRef, states):
+def rtn(states):
     # Extract reference position and velocity vectors
-    rRef = statesRef[:, 0:3]
-    vRef = statesRef[:, 3:6]
+    rRef = states[:, 0:3]
+    vRef = states[:, 3:6]
 
     # Calculate reference angular momentum vectors
     hRef = np.cross(rRef, vRef)
 
     # Calculate magnitudes
-    rRefMag = np.linalg.norm(rRef, axis=1).reshape((-1, 1))
-    hRefMag = np.linalg.norm(hRef, axis=1).reshape((-1, 1))
+    rRefMag = np.linalg.norm(rRef, axis=1, keepdims=True)
+    hRefMag = np.linalg.norm(hRef, axis=1, keepdims=True)
 
     # Calculate RTN components
     R = rRef / rRefMag
@@ -25,11 +25,5 @@ def rtn(statesRef, states):
     # Expand matrix for combined position and velocity rotation
     RTN = np.kron(np.eye(2, dtype=int), RTN)
 
-    # Calculate state differences
-    stateDeltas = states - statesRef
-
-    # Rotate state differences to RTN frame
-    stateDeltasRTN = np.squeeze(RTN @ stateDeltas[:, :, None])
-
-    # Return RTN differences
-    return stateDeltasRTN
+    # Return transformation matrix
+    return RTN
