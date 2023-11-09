@@ -25,8 +25,7 @@ def main():
     fitEndDate = fitStartDate + fitDuration
 
     # Set sample dates
-    sampleDates_ = pd.date_range(fitStartDate, fitEndDate, periods=100)
-    sampleDates = [absolutedate(date) for date in sampleDates_]
+    dates = pd.date_range(fitStartDate, fitEndDate, periods=100)
 
     # Extract TLE subset
     tles_ = [
@@ -40,31 +39,51 @@ def main():
     tlePropagator = brent.propagators.tles_to_propagator(tles_)
 
     # Generate pseudo-observation states
-    sampleStates = brent.propagators.propagate(tlePropagator, sampleDates)
+    sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)
+
+    # Create initial Orekit propagator
+    fitPropagator_ = brent.propagators.default_propagator(dates[0], sampleStates[0, :])
+
+    # Wrap Orekit propagator
+    fitPropagator = brent.propagators.Propagator(fitPropagator_)
+
+    # Declare error function
+    def func(x):
+        # Update initial state
+        fitPropagator.setInitialState(dates[0], x)
+
+        # Propagate state
+        states = fitPropagator.propagate(dates)
+
+        # Calculate RTN errors
+        # error = np.einsum("ijk, ik -> ij", sampleRTN, states - sampleStates)
+        error = states - sampleStates
+
+        # Return 1D array of errors
+        return error.ravel()
 
     # Create filter
-    filter = brent.filter.OrekitBatchLeastSquares(sampleStates)
+    filter = brent.filter.BatchLeastSquares(func)
 
     # Execute filter
-    fitPropagator = filter.estimate()
+    fitState = filter.estimate(sampleStates[0, :])
+    # import scipy.optimize
+    # fitState = scipy.optimize.least_squares(func, sampleStates[0, :]).x
+    fitPropagator.setInitialState(dates[0], fitState)
 
     # Generate fit states
-    fitStates = brent.propagators.propagate(fitPropagator, sampleDates)
-
-    # Convert states to NumPy arrays
-    _, sampleStates_ = brent.propagators.pv_to_array(sampleStates)
-    fitDates, fitStates_ = brent.propagators.pv_to_array(fitStates)
+    fitStates = fitPropagator.propagate(dates)
 
     # Calculate state residuals
-    deltaStates = fitStates_ - sampleStates_
+    deltaStates = fitStates - sampleStates
 
     # Transform state residuals to RTN
-    RTN = brent.frames.rtn(sampleStates_)
+    RTN = brent.frames.rtn(sampleStates)
     deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
 
     # Plot inertial position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(fitDates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
+    plt.plot(dates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
     plt.xlabel("Date [UTC]")
     plt.ylabel("Residual Error [m]")
     plt.legend()
@@ -76,7 +95,7 @@ def main():
 
     # Plot inertial velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(fitDates, deltaStates[:, 3:6], label=["X", "Y", "Z"])
+    plt.plot(dates, deltaStates[:, 3:6], label=["X", "Y", "Z"])
     plt.xlabel("Date [UTC]")
     plt.ylabel("Residual Error [m/s]")
     plt.legend()
@@ -88,7 +107,7 @@ def main():
 
     # Plot RTN position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(fitDates, deltaStatesRTN[:, 0:3], label=["R", "T", "N"])
+    plt.plot(dates, deltaStatesRTN[:, 0:3], label=["R", "T", "N"])
     plt.xlabel("Date [UTC]")
     plt.ylabel("Residual Error [m]")
     plt.legend()
@@ -100,7 +119,7 @@ def main():
 
     # Plot RTN velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(fitDates, deltaStatesRTN[:, 3:6], label=["R", "T", "N"])
+    plt.plot(dates, deltaStatesRTN[:, 3:6], label=["R", "T", "N"])
     plt.xlabel("Date [UTC]")
     plt.ylabel("Residual Error [m/s]")
     plt.legend()
