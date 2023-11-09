@@ -6,13 +6,13 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 from org.orekit.estimation.leastsquares import BatchLSEstimator
 
 # Internal imports
-from brent.propagators import default_propagator_builder
+import brent.propagators
 
 
 class OrekitBatchLeastSquares:
     def __init__(self, states):
         # Create propagator builder
-        propagatorBuilder = default_propagator_builder(states[0])
+        propagatorBuilder = brent.propagators.default_propagator_builder_(states[0])
 
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)

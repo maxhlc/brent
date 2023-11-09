@@ -3,7 +3,7 @@ import numpy as np
 
 # Orekit imports
 import orekit
-from orekit.pyhelpers import absolutedate_to_datetime
+from orekit.pyhelpers import absolutedate_to_datetime, datetime_to_absolutedate
 from org.orekit.bodies import CelestialBodyFactory
 from org.orekit.forces.gravity import (
     HolmesFeatherstoneAttractionModel,
@@ -12,13 +12,15 @@ from org.orekit.forces.gravity import (
 from org.orekit.forces.gravity.potential import GravityFieldFactory
 from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit, PositionAngle
+from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
 from org.orekit.propagation.analytical.tle import TLEPropagator
 from org.orekit.propagation.conversion import (
     NumericalPropagatorBuilder,
     DormandPrince853IntegratorBuilder,
 )
-from org.orekit.utils import IERSConventions, Constants
+from org.orekit.utils import IERSConventions, Constants, TimeStampedPVCoordinates
+from org.hipparchus.geometry.euclidean.threed import Vector3D
 import java.util
 
 # Default parameters
@@ -30,7 +32,7 @@ DEFAULT_DEGREE = 10
 DEFAULT_ORDER = 10
 
 
-def default_propagator_builder(state):
+def default_propagator_builder_(state):
     # Create propagator builder
     propagatorBuilder = NumericalPropagatorBuilder(
         CartesianOrbit(state, DEFAULT_ECI, DEFAULT_MU),
@@ -62,6 +64,22 @@ def default_propagator_builder(state):
 
     # Return propagator builder
     return propagatorBuilder
+
+
+def default_propagator_builder(date, state):
+    # Convert date and state to Orekit format
+    date = datetime_to_absolutedate(date)
+    pos = Vector3D(*state[0:3].tolist())
+    vel = Vector3D(*state[3:6].tolist())
+    state = TimeStampedPVCoordinates(date, pos, vel)
+
+    # Return default propagator builder
+    return default_propagator_builder_(state)
+
+
+def default_propagator(date, state):
+    # Create default propagator
+    return default_propagator_builder(date, state).buildPropagator(6 * [1.0])
 
 
 def tles_to_propagator(tles):
