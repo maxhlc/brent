@@ -4,10 +4,6 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta, datetime
 
-# Orekit imports
-import orekit
-from orekit.pyhelpers import datetime_to_absolutedate as absolutedate
-
 # Internal imports
 import brent
 
@@ -16,9 +12,6 @@ FIGSIZE = (5.5, 4.0)
 
 
 def main():
-    # Load TLEs
-    tles = brent.io.load_tle("./data/tle/8820.json")
-
     # Set dates
     fitStartDate = datetime(2022, 6, 1)
     fitDuration = timedelta(7)
@@ -27,16 +20,11 @@ def main():
     # Set sample dates
     dates = pd.date_range(fitStartDate, fitEndDate, periods=100)
 
-    # Extract TLE subset
-    tles_ = [
-        tle
-        for tle in tles
-        if (tle.getDate().durationFrom(absolutedate(fitStartDate)) >= 0)
-        and (tle.getDate().durationFrom(absolutedate(fitEndDate)) <= 0)
-    ]
+    # Load TLEs
+    tles = brent.io.load_tle("./data/tle/8820.json", dates[0], dates[-1])
 
     # Create TLE propagator
-    tlePropagator = brent.propagators.tles_to_propagator(tles_)
+    tlePropagator = brent.propagators.tles_to_propagator(tles)
 
     # Generate pseudo-observation states
     sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)

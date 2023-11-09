@@ -1,4 +1,5 @@
 # Standard imports
+from datetime import datetime
 from glob import glob
 
 # Third-party imports
@@ -6,6 +7,7 @@ import pandas as pd
 
 # Orekit imports
 import orekit
+from orekit.pyhelpers import datetime_to_absolutedate
 from org.orekit.data import DataSource
 from org.orekit.files.sp3 import SP3Parser
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
@@ -13,7 +15,7 @@ from org.orekit.propagation.analytical.tle import TLE
 import java.util
 
 
-def load_tle(path):
+def load_tle(path, start=datetime.min, end=datetime.max):
     # Read TLEs
     tles = pd.read_json(path)
 
@@ -27,11 +29,22 @@ def load_tle(path):
     # Drop duplicate TLEs, keeping the most recently issued instances
     tles.drop_duplicates("EPOCH", keep="last", inplace=True)
 
-    # Return filtered TLEs
-    return [
+    # Generate TLEs
+    tles = [
         TLE(tle["TLE_LINE1"], tle["TLE_LINE2"])
         for tle in tles.to_dict(orient="records")
     ]
+
+    # Extract TLE subset
+    tles = [
+        tle
+        for tle in tles
+        if (tle.getDate().durationFrom(datetime_to_absolutedate(start)) >= 0)
+        and (tle.getDate().durationFrom(datetime_to_absolutedate(end)) <= 0)
+    ]
+
+    # Return filtered TLEs
+    return tles
 
 
 def load_sp3(path, satID):
