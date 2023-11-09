@@ -55,20 +55,20 @@ def main():
         # Propagate state
         states = fitPropagator.propagate(dates)
 
-        # Calculate RTN errors
-        # error = np.einsum("ijk, ik -> ij", sampleRTN, states - sampleStates)
+        # Calculate position errors
         error = states - sampleStates
 
         # Return 1D array of errors
         return error.ravel()
 
+    # Declare weight function
+    wfunc = brent.filter.SampledWeight(6)
+
     # Create filter
-    filter = brent.filter.BatchLeastSquares(func)
+    filter = brent.filter.BatchLeastSquares(func, wfunc)
 
     # Execute filter
     fitState = filter.estimate(sampleStates[0, :])
-    # import scipy.optimize
-    # fitState = scipy.optimize.least_squares(func, sampleStates[0, :]).x
     fitPropagator.setInitialState(dates[0], fitState)
 
     # Generate fit states

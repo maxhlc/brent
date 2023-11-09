@@ -57,10 +57,45 @@ class OrekitBatchLeastSquares:
         return self.estimator.estimate()[0]
 
 
+class Weight:
+    def __init__(self):
+        pass
+
+    def __call__(self, y):
+        # Return identity matrix
+        return np.identity(len(y))
+
+
+class SampledWeight(Weight):
+    def __init__(self, nvar):
+        # Store number of variables
+        self.nvar = nvar
+
+    def __call__(self, y):
+        # Calculate number of residuals
+        ny = len(y)
+        nvar = self.nvar
+        nsam = ny // nvar
+
+        # Declare weight matrix
+        W = np.identity(len(y))
+
+        # Calculate residual covariance matrix and extract diagonal terms
+        yCov = np.cov(y.reshape((-1, self.nvar)), rowvar=False)
+        ySig = np.sqrt(np.diag(yCov))
+
+        # Update weight matrix
+        W[np.diag_indices_from(W)] /= np.tile(ySig, nsam)
+
+        # Return weight matrix
+        return W
+
+
 class BatchLeastSquares:
-    def __init__(self, func, eps=1e-8, niter=25, decov=1e-6):
-        # Store function
+    def __init__(self, func, wfunc=Weight(), eps=1e-8, niter=25, decov=1e-6):
+        # Store functions
         self.func = func
+        self.wfunc = wfunc
 
         # Store solver parameters
         self.eps = eps
@@ -72,6 +107,7 @@ class BatchLeastSquares:
         self.x_ = []
         self.y_ = []
         self.J_ = []
+        self.W_ = []
         self.A_ = []
         self.b_ = []
         self.e_ = []
@@ -85,12 +121,15 @@ class BatchLeastSquares:
             y = self.func(x)
             J = scipy.optimize.approx_fprime(x, self.func, self.eps * x)
 
+            # Calculate weight matrix
+            W = self.wfunc(y)
+
             # Calculate linear system matrices
-            A = J.T @ J
-            b = J.T @ y
+            A = J.T @ W @ J
+            b = J.T @ W @ y
 
             # Calculate error
-            e = np.sqrt(y.T @ y)
+            e = np.sqrt(y.T @ W @ y)
 
             # Calculate solution update
             dx = -np.linalg.solve(A, b)
@@ -99,6 +138,7 @@ class BatchLeastSquares:
             self.x_.append(x)
             self.y_.append(y)
             self.J_.append(J)
+            self.W_.append(W)
             self.A_.append(A)
             self.b_.append(b)
             self.e_.append(e)
@@ -112,7 +152,7 @@ class BatchLeastSquares:
 
             # Store percentage change
             self.de_.append(de)
-            
+
             # Break loop if converged
             if np.abs(de) < self.decov:
                 break
