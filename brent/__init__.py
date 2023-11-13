@@ -1,8 +1,5 @@
-# Internal imports (not dependent on initVM)
-from . import frames
-from . import io
+# Load paths
 from . import paths
-from . import util
 
 # Orekit imports
 import orekit
@@ -12,6 +9,9 @@ from orekit.pyhelpers import setup_orekit_curdir
 vm = orekit.initVM()
 setup_orekit_curdir(paths.DATA_OREKIT_DIR)
 
-# Internal imports (dependent on initVM)
+# Internal imports
 from . import filter
+from . import frames
+from . import io
 from . import propagators
+from . import util

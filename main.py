@@ -20,11 +20,8 @@ def main():
     # Set sample dates
     dates = pd.date_range(fitStartDate, fitEndDate, periods=100)
 
-    # Load TLEs
-    tles = brent.io.load_tle("./data/tle/8820.json", dates[0], dates[-1])
-
-    # Create TLE propagator
-    tlePropagator = brent.propagators.tles_to_propagator(tles)
+    # Load TLE propagator
+    tlePropagator = brent.io.load_tle_propagator("./data/tle/8820.json", dates[0], dates[-1])
 
     # Generate pseudo-observation states
     sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)

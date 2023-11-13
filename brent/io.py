@@ -14,6 +14,9 @@ from org.orekit.propagation.analytical import AggregateBoundedPropagator
 from org.orekit.propagation.analytical.tle import TLE
 import java.util
 
+# Internal imports
+import brent.propagators
+
 
 def load_tle(path, start=datetime.min, end=datetime.max):
     # Read TLEs
@@ -47,7 +50,18 @@ def load_tle(path, start=datetime.min, end=datetime.max):
     return tles
 
 
-def load_sp3(path, satID):
+def load_tle_propagator(path, start=datetime.min, end=datetime.max):
+    # Load TLEs
+    tles = load_tle(path, start, end)
+
+    # Create propagator
+    tlePropagator = brent.propagators.tles_to_propagator(tles)
+
+    # Return propagator
+    return tlePropagator
+
+
+def load_sp3_propagator(path, satID):
     # Create glob of paths
     paths = glob(path)
 
