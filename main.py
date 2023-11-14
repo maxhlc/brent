@@ -1,3 +1,6 @@
+# Standard imports
+import argparse
+
 # Third-party imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,17 +14,17 @@ import brent
 FIGSIZE = (5.5, 4.0)
 
 
-def main():
+def main(args):
     # Set dates
-    fitStartDate = datetime(2022, 6, 1)
-    fitDuration = timedelta(7)
+    fitStartDate = datetime.strptime(args.start, "%Y-%m-%d")
+    fitDuration = timedelta(args.duration)
     fitEndDate = fitStartDate + fitDuration
 
     # Set sample dates
     dates = pd.date_range(fitStartDate, fitEndDate, periods=100)
 
     # Load TLE propagator
-    tlePropagator = brent.io.load_tle_propagator("./data/tle/8820.json", dates[0], dates[-1])
+    tlePropagator = brent.io.load_tle_propagator(args.tle, dates[0], dates[-1])
 
     # Generate pseudo-observation states
     sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)
@@ -78,7 +81,7 @@ def main():
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig("./output/xyz.png")
+    plt.savefig(f"{args.output}_{args.start}_{args.duration}_xyz_pos.png")
 
     # Plot inertial velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -90,7 +93,7 @@ def main():
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig("./output/vxyz.png")
+    plt.savefig(f"{args.output}_{args.start}_{args.duration}_xyz_vel.png")
 
     # Plot RTN position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -102,7 +105,7 @@ def main():
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig("./output/rtn.png")
+    plt.savefig(f"{args.output}_{args.start}_{args.duration}_rtn_pos.png")
 
     # Plot RTN velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -114,8 +117,17 @@ def main():
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig("./output/vrtn.png")
+    plt.savefig(f"{args.output}_{args.start}_{args.duration}_rtn_vel.png")
 
 
 if __name__ == "__main__":
-    main()
+    # Parse inputs
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--start", type=str, required=True)
+    parser.add_argument("--duration", type=int, required=True)
+    parser.add_argument("--tle", type=str, required=True)
+    parser.add_argument("--output", type=str, required=True)
+    args = parser.parse_args()
+
+    # Execute
+    main(args)
