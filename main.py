@@ -16,8 +16,8 @@ FIGSIZE = (5.5, 4.0)
 
 def main(args):
     # Set dates
-    fitStartDate = datetime.strptime(args.start, "%Y-%m-%d")
-    fitDuration = timedelta(args.duration)
+    fitStartDate = args.start
+    fitDuration = args.duration
     fitEndDate = fitStartDate + fitDuration
 
     # Set sample dates
@@ -129,8 +129,8 @@ def main(args):
 if __name__ == "__main__":
     # Parse inputs
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", type=str, required=True)
-    parser.add_argument("--duration", type=int, required=True)
+    parser.add_argument("--start", type=lambda x: datetime.strptime(x, "%Y-%m-%d"), required=True)
+    parser.add_argument("--duration", type=lambda x: timedelta(float(x)), required=True)
     parser.add_argument("--tle", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
     args = parser.parse_args()
