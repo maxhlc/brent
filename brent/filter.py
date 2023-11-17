@@ -66,6 +66,31 @@ class Weight:
         return np.identity(len(y))
 
 
+class ConstantWeight(Weight):
+    def __init__(self, nvar, weights):
+        # Check for consistency
+        assert nvar == len(weights.ravel())
+
+        # Store number of variables and weights
+        self.nvar = nvar
+        self.weights = weights.ravel()
+
+    def __call__(self, y):
+        # Calculate number of residuals
+        ny = len(y)
+        nvar = self.nvar
+        nsam = ny // nvar
+
+        # Declare weight matrix
+        W = np.identity(len(y))
+
+        # Update weight matrix
+        W[np.diag_indices_from(W)] = np.tile(self.weights, nsam)
+
+        # Return weight matrix
+        return W
+
+
 class SampledWeight(Weight):
     def __init__(self, nvar):
         # Store number of variables
