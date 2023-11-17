@@ -29,9 +29,6 @@ def main(args):
     # Generate pseudo-observation states
     sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)
 
-    # Calculate RTN transform
-    samplesRTN = brent.frames.rtn(sampleStates)
-
     # Create initial Orekit propagator
     fitPropagator_ = brent.propagators.default_propagator(dates[0], sampleStates[0, :])
 
@@ -46,8 +43,11 @@ def main(args):
         # Propagate state
         states = fitPropagator.propagate(dates)
 
+        # Calculate RTN transformations
+        RTN = brent.frames.rtn(states)
+
         # Calculate position errors
-        error = states - sampleStates
+        error = np.einsum("ijk,ik -> ij", RTN, sampleStates - states)
 
         # Return 1D array of errors
         return error.ravel()
@@ -62,14 +62,20 @@ def main(args):
     fitState = filter.estimate(sampleStates[0, :])
     fitPropagator.setInitialState(dates[0], fitState)
 
+    # Get estimated covariance
+    fitCovariance = filter.covariance()
+
     # Generate fit states
     fitStates = fitPropagator.propagate(dates)
 
+    # Calculate RTN transformations
+    RTN = brent.frames.rtn(fitStates)
+
     # Calculate state residuals
-    deltaStates = fitStates - sampleStates
+    deltaStates = sampleStates - fitStates
 
     # Transform state residuals to RTN
-    deltaStatesRTN = np.einsum("ijk,ik -> ij", samplesRTN, deltaStates)
+    deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
 
     # Plot inertial position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
