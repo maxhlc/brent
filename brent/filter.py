@@ -139,7 +139,10 @@ class BatchLeastSquares:
         self.dx_ = []
         self.de_ = []
 
-    def estimate(self, x):
+    def estimate(self, x_):
+        # Make a copy of the initial guess
+        x = np.copy(x_)
+
         # Iterate
         for iter in range(self.niter):
             # Calculate error vector and its Jacobian
