@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta, datetime
 
-# Internal imports
-import brent
-
 # Set figure size
 FIGSIZE = (5.5, 4.0)
 
 
 def main(args):
+    # Internal imports
+    import brent
+
     # Set dates
     fitStartDate = args.start
     fitDuration = args.duration
@@ -29,38 +29,17 @@ def main(args):
     # Generate pseudo-observation states
     sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)
 
-    # Create initial Orekit propagator
-    fitPropagator_ = brent.propagators.default_propagator(dates[0], sampleStates[0, :])
-
-    # Wrap Orekit propagator
-    fitPropagator = brent.propagators.Propagator(fitPropagator_)
-
-    # Declare error function
-    def func(x):
-        # Update initial state
-        fitPropagator.setInitialState(dates[0], x)
-
-        # Propagate state
-        states = fitPropagator.propagate(dates)
-
-        # Calculate RTN transformations
-        RTN = brent.frames.rtn(states)
-
-        # Calculate position errors
-        error = np.einsum("ijk,ik -> ij", RTN, sampleStates - states)
-
-        # Return 1D array of errors
-        return error.ravel()
-
-    # Declare weight function
-    wfunc = brent.filter.SampledWeight(6)
-
     # Create filter
-    filter = brent.filter.BatchLeastSquares(func, wfunc)
+    filter = brent.filter.OrekitBatchLeastSquares(
+        dates,
+        sampleStates,
+        brent.filter.RTNCovarianceProvider(
+            np.array([0.43e3, 5.7e3, 0.17e3, 7.0, 0.43, 0.19])
+        ),
+    )
 
     # Execute filter
-    fitState = filter.estimate(sampleStates[0, :])
-    fitPropagator.setInitialState(dates[0], fitState)
+    fitPropagator = filter.estimate()
 
     # Get estimated covariance
     fitCovariance = filter.covariance()
@@ -70,6 +49,9 @@ def main(args):
 
     # Calculate RTN transformations
     RTN = brent.frames.rtn(fitStates)
+
+    # Transform fit covariance to RTN
+    fitCovarianceRTN = RTN[0, :, :] @ fitCovariance @ RTN[0, :, :].T
 
     # Calculate state residuals
     deltaStates = sampleStates - fitStates
