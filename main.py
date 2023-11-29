@@ -59,6 +59,9 @@ def main(args):
     # Transform state residuals to RTN
     deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
 
+    # Generate output path prefix
+    plotPathPrefix = f"{args.output}_{args.start.strftime('%Y-%m-%d')}_{args.duration.days}"
+
     # Plot inertial position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
     plt.plot(dates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
@@ -69,7 +72,8 @@ def main(args):
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig(f"{args.output}_{args.start}_{args.duration}_xyz_pos.png")
+    plt.savefig(f"{plotPathPrefix}_xyz_pos.png")
+    plt.close()
 
     # Plot inertial velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -81,7 +85,8 @@ def main(args):
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig(f"{args.output}_{args.start}_{args.duration}_xyz_vel.png")
+    plt.savefig(f"{plotPathPrefix}_xyz_vel.png")
+    plt.close()
 
     # Plot RTN position residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -93,7 +98,8 @@ def main(args):
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig(f"{args.output}_{args.start}_{args.duration}_rtn_pos.png")
+    plt.savefig(f"{plotPathPrefix}_rtn_pos.png")
+    plt.close()
 
     # Plot RTN velocity residuals
     fig, ax = plt.subplots(figsize=FIGSIZE)
@@ -105,7 +111,8 @@ def main(args):
     plt.grid(which="both", alpha=0.5)
     plt.grid(which="minor", alpha=0.25)
     plt.tight_layout()
-    plt.savefig(f"{args.output}_{args.start}_{args.duration}_rtn_vel.png")
+    plt.savefig(f"{plotPathPrefix}_rtn_vel.png")
+    plt.close()
 
 
 if __name__ == "__main__":
