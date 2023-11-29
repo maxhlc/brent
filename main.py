@@ -59,60 +59,62 @@ def main(args):
     # Transform state residuals to RTN
     deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
 
-    # Generate output path prefix
-    plotPathPrefix = f"{args.output}_{args.start.strftime('%Y-%m-%d')}_{args.duration.days}"
+    # Plot results
+    if args.plot:
+        # Generate output path prefix
+        plotPathPrefix = f"{args.output}_{args.start.strftime('%Y-%m-%d')}_{args.duration.days}"
 
-    # Plot inertial position residuals
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(dates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
-    plt.xlabel("Date [UTC]")
-    plt.ylabel("Residual Error [m]")
-    plt.legend()
-    fig.autofmt_xdate()
-    plt.grid(which="both", alpha=0.5)
-    plt.grid(which="minor", alpha=0.25)
-    plt.tight_layout()
-    plt.savefig(f"{plotPathPrefix}_xyz_pos.png")
-    plt.close()
+        # Plot inertial position residuals
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        plt.plot(dates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
+        plt.xlabel("Date [UTC]")
+        plt.ylabel("Residual Error [m]")
+        plt.legend()
+        fig.autofmt_xdate()
+        plt.grid(which="both", alpha=0.5)
+        plt.grid(which="minor", alpha=0.25)
+        plt.tight_layout()
+        plt.savefig(f"{plotPathPrefix}_xyz_pos.png")
+        plt.close()
 
-    # Plot inertial velocity residuals
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(dates, deltaStates[:, 3:6], label=["X", "Y", "Z"])
-    plt.xlabel("Date [UTC]")
-    plt.ylabel("Residual Error [m/s]")
-    plt.legend()
-    fig.autofmt_xdate()
-    plt.grid(which="both", alpha=0.5)
-    plt.grid(which="minor", alpha=0.25)
-    plt.tight_layout()
-    plt.savefig(f"{plotPathPrefix}_xyz_vel.png")
-    plt.close()
+        # Plot inertial velocity residuals
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        plt.plot(dates, deltaStates[:, 3:6], label=["X", "Y", "Z"])
+        plt.xlabel("Date [UTC]")
+        plt.ylabel("Residual Error [m/s]")
+        plt.legend()
+        fig.autofmt_xdate()
+        plt.grid(which="both", alpha=0.5)
+        plt.grid(which="minor", alpha=0.25)
+        plt.tight_layout()
+        plt.savefig(f"{plotPathPrefix}_xyz_vel.png")
+        plt.close()
 
-    # Plot RTN position residuals
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(dates, deltaStatesRTN[:, 0:3], label=["R", "T", "N"])
-    plt.xlabel("Date [UTC]")
-    plt.ylabel("Residual Error [m]")
-    plt.legend()
-    fig.autofmt_xdate()
-    plt.grid(which="both", alpha=0.5)
-    plt.grid(which="minor", alpha=0.25)
-    plt.tight_layout()
-    plt.savefig(f"{plotPathPrefix}_rtn_pos.png")
-    plt.close()
+        # Plot RTN position residuals
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        plt.plot(dates, deltaStatesRTN[:, 0:3], label=["R", "T", "N"])
+        plt.xlabel("Date [UTC]")
+        plt.ylabel("Residual Error [m]")
+        plt.legend()
+        fig.autofmt_xdate()
+        plt.grid(which="both", alpha=0.5)
+        plt.grid(which="minor", alpha=0.25)
+        plt.tight_layout()
+        plt.savefig(f"{plotPathPrefix}_rtn_pos.png")
+        plt.close()
 
-    # Plot RTN velocity residuals
-    fig, ax = plt.subplots(figsize=FIGSIZE)
-    plt.plot(dates, deltaStatesRTN[:, 3:6], label=["R", "T", "N"])
-    plt.xlabel("Date [UTC]")
-    plt.ylabel("Residual Error [m/s]")
-    plt.legend()
-    fig.autofmt_xdate()
-    plt.grid(which="both", alpha=0.5)
-    plt.grid(which="minor", alpha=0.25)
-    plt.tight_layout()
-    plt.savefig(f"{plotPathPrefix}_rtn_vel.png")
-    plt.close()
+        # Plot RTN velocity residuals
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        plt.plot(dates, deltaStatesRTN[:, 3:6], label=["R", "T", "N"])
+        plt.xlabel("Date [UTC]")
+        plt.ylabel("Residual Error [m/s]")
+        plt.legend()
+        fig.autofmt_xdate()
+        plt.grid(which="both", alpha=0.5)
+        plt.grid(which="minor", alpha=0.25)
+        plt.tight_layout()
+        plt.savefig(f"{plotPathPrefix}_rtn_vel.png")
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -122,6 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--duration", type=lambda x: timedelta(float(x)), required=True)
     parser.add_argument("--tle", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--plot", action="store_true")
     args = parser.parse_args()
 
     # Execute
