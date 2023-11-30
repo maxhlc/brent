@@ -58,7 +58,7 @@ def load_tle_propagator(path, start=datetime.min, end=datetime.max):
     tlePropagator = brent.propagators.tles_to_propagator(tles)
 
     # Return propagator
-    return tlePropagator
+    return brent.propagators.Propagator(tlePropagator)
 
 
 def load_sp3_propagator(path, satID):
@@ -86,4 +86,4 @@ def load_sp3_propagator(path, satID):
     sp3propagator = AggregateBoundedPropagator(sp3propagators)
 
     # Return aggregated propagator
-    return sp3propagator
+    return brent.propagators.Propagator(sp3propagator)

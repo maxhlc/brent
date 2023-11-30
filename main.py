@@ -27,7 +27,7 @@ def main(args):
     tlePropagator = brent.io.load_tle_propagator(args.tle, dates[0], dates[-1])
 
     # Generate pseudo-observation states
-    sampleStates = brent.propagators.Propagator(tlePropagator).propagate(dates)
+    sampleStates = tlePropagator.propagate(dates)
 
     # Create filter
     filter = brent.filter.OrekitBatchLeastSquares(
