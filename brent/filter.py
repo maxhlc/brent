@@ -210,7 +210,7 @@ class BatchLeastSquares:
         for iter in range(self.niter):
             # Calculate error vector and its Jacobian
             y = self.func(x)
-            J = scipy.optimize.approx_fprime(x, self.func, self.eps * x)
+            J = scipy.optimize.approx_fprime(x, self.func, self.eps * np.abs(x))
 
             # Calculate weight matrix
             W = self.wfunc(y)
