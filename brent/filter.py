@@ -179,6 +179,34 @@ class SampledWeight(Weight):
         return W
 
 
+class CovarianceProviderWeight(Weight):
+    def __init__(self, states, covarianceProvider):
+        # Store number of variables
+        self.states = states
+
+        # Extract number of states and variables
+        self.nstates = states.shape[0]
+        self.nvar = states.shape[1]
+
+        # Calculate number of elements in residual vector
+        self.nelem = self.nstates * self.nvar
+
+        # Calculate variances
+        self.variances = np.concatenate(
+            [np.diag(covarianceProvider(state)) for state in states]
+        )
+
+        # Calculate weight matrix
+        self.W = np.diag(1.0 / np.sqrt(self.variances))
+
+    def __call__(self, y):
+        # Check number of residuals
+        assert len(y) == self.nelem
+
+        # Return weight matrix
+        return self.W
+
+
 class BatchLeastSquares:
     def __init__(self, func, wfunc=Weight(), eps=1e-8, niter=25, decov=1e-6):
         # Store functions
