@@ -116,6 +116,26 @@ def main(args):
         plt.savefig(f"{plotPathPrefix}_rtn_vel.png")
         plt.close()
 
+    # Print results
+    if args.verbose:
+        # Update linewidth
+        np.set_printoptions(linewidth=160)
+
+        # Calculate fit statistics
+        fitXYZsigma = np.sqrt(np.diag(fitCovariance))
+        residualXYZsigma = np.sqrt(np.diag(np.cov(deltaStates, rowvar=False)))
+        fitRTNsigma = np.sqrt(np.diag(fitCovarianceRTN))
+        residualRTNsigma = np.sqrt(np.diag(np.cov(deltaStatesRTN, rowvar=False)))
+
+        # Print statistics
+        print(f"Fit XYZ 1-sigma:      {fitXYZsigma}")
+        print(f"Residual XYZ 1-sigma: {residualXYZsigma}")
+        print(f"XYZ 1-sigma ratio:    {fitXYZsigma / residualXYZsigma}")
+        print("")
+        print(f"Fit RTN 1-sigma:      {fitRTNsigma}")
+        print(f"Residual RTN 1-sigma: {residualRTNsigma}")
+        print(f"RTN 1-sigma ratio:    {fitRTNsigma / residualRTNsigma}")
+
 
 if __name__ == "__main__":
     # Parse inputs
@@ -125,6 +145,7 @@ if __name__ == "__main__":
     parser.add_argument("--tle", type=str, required=True)
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--plot", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
     # Execute
