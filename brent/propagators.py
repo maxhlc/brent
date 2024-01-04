@@ -24,8 +24,9 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 import java.util
 
 # Default parameters
+DEFAULT_IERSCONVENTIONS = IERSConventions.IERS_2010
 DEFAULT_ECI = FramesFactory.getEME2000()
-DEFAULT_ECEF = FramesFactory.getITRF(IERSConventions.IERS_2010, True)
+DEFAULT_ECEF = FramesFactory.getITRF(DEFAULT_IERSCONVENTIONS, True)
 DEFAULT_MU = Constants.EIGEN5C_EARTH_MU
 DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.001, 300.0, 1.0)
 DEFAULT_DEGREE = 10
@@ -68,18 +69,37 @@ def default_propagator_builder_(state):
 
 def default_propagator_builder(date, state):
     # Convert date and state to Orekit format
-    date = datetime_to_absolutedate(date)
-    pos = Vector3D(*state[0:3].tolist())
-    vel = Vector3D(*state[3:6].tolist())
-    state = TimeStampedPVCoordinates(date, pos, vel)
+    date_ = datetime_to_absolutedate(date)
+    pos_ = Vector3D(*state[0:3].tolist())
+    vel_ = Vector3D(*state[3:6].tolist())
+    state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
 
     # Return default propagator builder
-    return default_propagator_builder_(state)
+    return default_propagator_builder_(state_)
 
 
 def default_propagator(date, state):
+    # Create propagator builder
+    propagatorBuilder = default_propagator_builder(date, state)
+
+    # Calculate number of parameters
+    n = len(propagatorBuilder.getSelectedNormalizedParameters())
+
+    # Create propagator
+    propagator = propagatorBuilder.buildPropagator(n * [1.0])
+
+    # Convert date and state to Orekit format
+    date_ = datetime_to_absolutedate(date)
+    pos_ = Vector3D(*state[0:3].tolist())
+    vel_ = Vector3D(*state[3:6].tolist())
+    state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
+    spacecraftState = SpacecraftState(CartesianOrbit(state_, DEFAULT_ECI, DEFAULT_MU))
+
+    # Ensure initial state is correct
+    propagator.setInitialState(spacecraftState)
+
     # Create default propagator
-    return default_propagator_builder(date, state).buildPropagator(6 * [1.0])
+    return propagator
 
 
 def tles_to_propagator(tles):
