@@ -1,0 +1,8 @@
+conda-forge::orekit==11.3.3
+conda-forge::timeout-decorator
+matplotlib
+numpy
+pandas
+scipy
+seaborn
+tqdm
