@@ -59,6 +59,29 @@ def main(args):
     # Transform state residuals to RTN
     deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
 
+    # Calculate residual sample covariances
+    residualCovariance = np.cov(deltaStates, rowvar=False)
+    residualCovarianceRTN = np.cov(deltaStatesRTN, rowvar=False)
+
+    # Load SP3 data
+    testPropagator = brent.io.load_sp3_propagator(args.sp3, args.sp3name)
+
+    # Create test dates
+    testDates = pd.date_range(fitEndDate, fitEndDate + timedelta(30), freq="0.25D")
+
+    # Calculate test states
+    sampleTestStates = tlePropagator.propagate(testDates)
+    fitTestStates = fitPropagator.propagate(testDates)
+    testStates = testPropagator.propagate(testDates)
+
+    # Calculate position error
+    sampleError = np.linalg.norm(sampleTestStates - testStates, axis=1)
+    fitError = np.linalg.norm(fitTestStates - testStates, axis=1)
+
+    # Calculate proportion of fit period where the fit outperforms the samples
+    proportion = np.mean(fitError <= sampleError)
+
+
     # Plot results
     if args.plot:
         # Generate output path prefix
@@ -136,9 +159,30 @@ def main(args):
         print(f"Residual RTN 1-sigma: {residualRTNsigma}")
         print(f"RTN 1-sigma ratio:    {fitRTNsigma / residualRTNsigma}")
 
+    # Return results
+    return {
+        "dates": dates,
+        "sampleStates": sampleStates,
+        "fitStates": fitStates,
+        "deltaStates": deltaStates,
+        "deltaStatesRTN": deltaStatesRTN,
+        "fitCovariance": fitCovariance,
+        "fitCovarianceRTN": fitCovarianceRTN,
+        "residualCovariance": residualCovariance,
+        "residualCovarianceRTN": residualCovarianceRTN,
+        "testDates": testDates,
+        "sampleTestStates": sampleTestStates,
+        "fitTestStates": fitTestStates,
+        "testStates": testStates,
+        "sampleError": sampleError,
+        "fitError": fitError,
+        "proportion": proportion,
+    }
+
 
 if __name__ == "__main__":
     # Parse inputs
+    # TODO: fix format
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", type=lambda x: datetime.strptime(x, "%Y-%m-%d"), required=True)
     parser.add_argument("--duration", type=lambda x: timedelta(float(x)), required=True)
@@ -146,6 +190,8 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--plot", action="store_true")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--sp3", required=True)
+    parser.add_argument("--sp3name", required=True)
     args = parser.parse_args()
 
     # Execute
