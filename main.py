@@ -1,20 +1,20 @@
 # Standard imports
 import argparse
+from datetime import timedelta
 
 # Third-party imports
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from datetime import timedelta, datetime
+
+# Internal imports
+import brent
 
 # Set figure size
 FIGSIZE = (5.5, 4.0)
 
 
-def main(args):
-    # Internal imports
-    import brent
-
+def main(args: brent.io.Arguments):
     # Set dates
     fitStartDate = args.start
     fitDuration = args.duration
@@ -33,6 +33,7 @@ def main(args):
     filter = brent.filter.OrekitBatchLeastSquares(
         dates,
         sampleStates,
+        args.model,
         brent.filter.RTNCovarianceProvider(
             np.array([0.43e3, 5.7e3, 0.17e3, 7.0, 0.43, 0.19])
         ),
@@ -42,7 +43,7 @@ def main(args):
     fitPropagator = filter.estimate()
 
     # Get estimated covariance
-    fitCovariance = filter.covariance()
+    fitCovariance = filter.covariance()[0:6, 0:6]
 
     # Generate fit states
     fitStates = fitPropagator.propagate(dates)
@@ -67,7 +68,7 @@ def main(args):
     testPropagator = brent.io.load_sp3_propagator(args.sp3, args.sp3name)
 
     # Create test dates
-    testDates = pd.date_range(fitEndDate, fitEndDate + timedelta(30), freq="0.25D")
+    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1H")
 
     # Calculate test states
     sampleTestStates = tlePropagator.propagate(testDates)
@@ -81,12 +82,11 @@ def main(args):
     # Calculate proportion of fit period where the fit outperforms the samples
     proportion = np.mean(fitError <= sampleError)
 
+    # Generate output path prefix
+    plotPathPrefix = f"{args.output}_{args.start.strftime('%Y-%m-%d')}_{args.duration.days}"
 
     # Plot results
     if args.plot:
-        # Generate output path prefix
-        plotPathPrefix = f"{args.output}_{args.start.strftime('%Y-%m-%d')}_{args.duration.days}"
-
         # Plot inertial position residuals
         fig, ax = plt.subplots(figsize=FIGSIZE)
         plt.plot(dates, deltaStates[:, 0:3], label=["X", "Y", "Z"])
@@ -139,6 +139,21 @@ def main(args):
         plt.savefig(f"{plotPathPrefix}_rtn_vel.png")
         plt.close()
 
+        # Plot post-fit position errors
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+        plt.plot(testDates, sampleError, label="TLEs (GP)")
+        plt.plot(testDates, fitError, label="Fit (SP)")
+        plt.axvline(fitStartDate, color="black", linestyle="--", label="Fit Window")
+        plt.axvline(fitEndDate, color="black", linestyle="--")
+        plt.xlabel("Date [UTC]")
+        plt.ylabel("Position Error [m]")
+        plt.legend()
+        fig.autofmt_xdate()
+        plt.grid()
+        plt.tight_layout()
+        plt.savefig(f"{plotPathPrefix}_r.png")
+        plt.close()
+
     # Print results
     if args.verbose:
         # Update linewidth
@@ -181,18 +196,13 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # Parse inputs
-    # TODO: fix format
+    # Parse input
     parser = argparse.ArgumentParser()
-    parser.add_argument("--start", type=lambda x: datetime.strptime(x, "%Y-%m-%d"), required=True)
-    parser.add_argument("--duration", type=lambda x: timedelta(float(x)), required=True)
-    parser.add_argument("--tle", type=str, required=True)
-    parser.add_argument("--output", type=str, required=True)
-    parser.add_argument("--plot", action="store_true")
-    parser.add_argument("--verbose", action="store_true")
-    parser.add_argument("--sp3", required=True)
-    parser.add_argument("--sp3name", required=True)
-    args = parser.parse_args()
+    parser.add_argument("--input", type=str, default="./input/input.json")
+    parser_args = parser.parse_args()
+
+    # Load arguments
+    args = brent.io.load_arguments(parser_args.input)
 
     # Execute
     main(args)

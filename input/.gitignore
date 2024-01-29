@@ -1,0 +1,6 @@
+# Ignore all data
+*
+
+# Except .gitignore and input example
+!.gitignore
+!input.json.example

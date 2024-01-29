@@ -1,3 +1,7 @@
+# Standard imports
+from dataclasses import dataclass
+from datetime import datetime
+
 # Third-party imports
 import numpy as np
 
@@ -10,6 +14,11 @@ from org.orekit.forces.gravity import (
     ThirdBodyAttraction,
 )
 from org.orekit.forces.gravity.potential import GravityFieldFactory
+from org.orekit.forces.radiation import (
+    SolarRadiationPressure,
+    IsotropicRadiationSingleCoefficient,
+    RadiationSensitive,
+)
 from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit, PositionAngle
 from org.orekit.propagation import SpacecraftState
@@ -28,12 +37,32 @@ DEFAULT_IERSCONVENTIONS = IERSConventions.IERS_2010
 DEFAULT_ECI = FramesFactory.getEME2000()
 DEFAULT_ECEF = FramesFactory.getITRF(DEFAULT_IERSCONVENTIONS, True)
 DEFAULT_MU = Constants.EIGEN5C_EARTH_MU
-DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.001, 300.0, 1.0)
-DEFAULT_DEGREE = 10
-DEFAULT_ORDER = 10
+DEFAULT_RADIUS = Constants.EIGEN5C_EARTH_EQUATORIAL_RADIUS
+DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)
 
 
-def default_propagator_builder_(state):
+@dataclass
+class ModelParameters:
+    # Physical properties
+    mass: float
+    area_srp: float
+    cr: float
+
+    # Geopotential perturbations
+    potential: bool
+    potential_degree: int
+    potential_order: int
+
+    # Third-body perturbations
+    moon: bool
+    sun: bool
+
+    # SRP
+    srp: bool
+    srp_estimate: bool
+
+
+def default_propagator_builder_(state: TimeStampedPVCoordinates, model: ModelParameters):
     # Create propagator builder
     propagatorBuilder = NumericalPropagatorBuilder(
         CartesianOrbit(state, DEFAULT_ECI, DEFAULT_MU),
@@ -42,32 +71,69 @@ def default_propagator_builder_(state):
         1.0,
     )
 
+    # Set object mass
+    propagatorBuilder.setMass(model.mass)
+
     # Get celestial bodies
     sun = CelestialBodyFactory.getSun()
     moon = CelestialBodyFactory.getMoon()
 
     # Create gravity model
-    gravityFieldProvider = GravityFieldFactory.getNormalizedProvider(
-        DEFAULT_DEGREE, DEFAULT_ORDER
-    )
-    gravityForceModel = HolmesFeatherstoneAttractionModel(
-        DEFAULT_ECEF, gravityFieldProvider
-    )
-    propagatorBuilder.addForceModel(gravityForceModel)
+    if model.potential:
+        # Load geopotential model
+        gravityFieldProvider = GravityFieldFactory.getNormalizedProvider(
+            model.potential_degree, model.potential_order
+        )
+
+        # Create geopotential force model
+        gravityForceModel = HolmesFeatherstoneAttractionModel(
+            DEFAULT_ECEF, gravityFieldProvider
+        )
+
+        # Add geopotential force model to propagator
+        propagatorBuilder.addForceModel(gravityForceModel)
 
     # Moon model
-    moonAttraction = ThirdBodyAttraction(moon)
-    propagatorBuilder.addForceModel(moonAttraction)
+    if model.moon:
+        # Create lunar perturbation
+        moonAttraction = ThirdBodyAttraction(moon)
+
+        # Add lunar perturbation to propagator
+        propagatorBuilder.addForceModel(moonAttraction)
 
     # Sun model
-    sunAttraction = ThirdBodyAttraction(sun)
-    propagatorBuilder.addForceModel(sunAttraction)
+    if model.sun:
+        # Create solar perturbation
+        sunAttraction = ThirdBodyAttraction(sun)
+
+        # Add solar perturbation to propagator
+        propagatorBuilder.addForceModel(sunAttraction)
+
+    # SRP model
+    if model.srp:
+        # Create SRP force
+        srp = SolarRadiationPressure(
+            sun,
+            DEFAULT_RADIUS,
+            IsotropicRadiationSingleCoefficient(model.area_srp, model.cr),
+        )
+
+        # Enable CR estimation
+        if model.srp_estimate:
+            # Iterate through drivers
+            for driver in srp.getParametersDrivers():
+                # Enable reflection coefficent driver
+                if driver.getName() == RadiationSensitive.REFLECTION_COEFFICIENT:
+                    driver.setSelected(True)
+
+        # Add SRP to force model
+        propagatorBuilder.addForceModel(srp)
 
     # Return propagator builder
     return propagatorBuilder
 
 
-def default_propagator_builder(date, state):
+def default_propagator_builder(date: datetime, state: np.ndarray, model: ModelParameters):
     # Convert date and state to Orekit format
     date_ = datetime_to_absolutedate(date)
     pos_ = Vector3D(*state[0:3].tolist())
@@ -75,12 +141,12 @@ def default_propagator_builder(date, state):
     state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
 
     # Return default propagator builder
-    return default_propagator_builder_(state_)
+    return default_propagator_builder_(state_, model)
 
 
-def default_propagator(date, state):
+def default_propagator(date: datetime, state: np.ndarray, model: ModelParameters):
     # Create propagator builder
-    propagatorBuilder = default_propagator_builder(date, state)
+    propagatorBuilder = default_propagator_builder(date, state, model)
 
     # Calculate number of parameters
     n = len(propagatorBuilder.getSelectedNormalizedParameters())

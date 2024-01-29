@@ -11,7 +11,6 @@ from org.orekit.utils import PVCoordinates, TimeStampedPVCoordinates
 from org.hipparchus.linear import QRDecomposer
 from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimizer
 from org.hipparchus.geometry.euclidean.threed import Vector3D
-
 import java.util
 
 # Internal imports
@@ -48,7 +47,7 @@ class RTNCovarianceProvider(CovarianceProvider):
 
 
 class OrekitBatchLeastSquares:
-    def __init__(self, dates, states, covarianceProvider=CovarianceProvider()):
+    def __init__(self, dates, states, model, covarianceProvider=CovarianceProvider()):
         # Generate states in Orekit format
         states_ = [
             TimeStampedPVCoordinates(
@@ -60,7 +59,7 @@ class OrekitBatchLeastSquares:
         ]
 
         # Create propagator builder
-        propagatorBuilder = brent.propagators.default_propagator_builder_(states_[0])
+        propagatorBuilder = brent.propagators.default_propagator_builder_(states_[0], model)
 
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)

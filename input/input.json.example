@@ -1,0 +1,22 @@
+{
+    "start": "2022-02-01",
+    "duration": 7,
+    "tle": "./data/tle/8820.json",
+    "sp3": "./data/sp3/lageos1/*.sp3",
+    "sp3name": "L51",
+    "model": {
+        "mass": 1.0,
+        "area_srp": 1.0,
+        "cr": 0.0,
+        "potential": true,
+        "potential_degree": 10,
+        "potential_order": 10,
+        "moon": true,
+        "sun": true,
+        "srp": true,
+        "srp_estimate": true
+    },
+    "verbose": false,
+    "plot": true,
+    "output": "./LAGEOS1"
+}

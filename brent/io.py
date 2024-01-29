@@ -1,5 +1,7 @@
 # Standard imports
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+import json
 from glob import glob
 
 # Third-party imports
@@ -18,8 +20,45 @@ import java.util
 import brent.propagators
 
 
+@dataclass
+class Arguments:
+    # Fit window parameters
+    start: datetime
+    duration: timedelta
+
+    # TLE parameters
+    tle: str
+
+    # SP3 parameters
+    sp3: str
+    sp3name: str
+
+    # Model parameters
+    model: brent.propagators.ModelParameters
+
+    # Output parameters
+    verbose: bool
+    plot: bool
+    output: str
+
+
+def load_arguments(path):
+    # Load argument file
+    with open(path, "r") as fid:
+        args = json.load(fid)
+
+    # Cast required types
+    args["start"] = datetime.strptime(args["start"], "%Y-%m-%d")
+    args["duration"] = timedelta(args["duration"])
+    args["model"] = brent.propagators.ModelParameters(**args["model"])
+
+    # Return arguments
+    return Arguments(**args)
+
+
 def load_tle(path, start=datetime.min, end=datetime.max):
     # Read TLEs
+    # TODO: read glob like SP3 loader
     tles = pd.read_json(path)
 
     # Throw error if file contains multiple different objects
@@ -83,6 +122,7 @@ def load_sp3_propagator(path, satID):
         sp3propagators.add(sp3data.getSatellites().get(satID).getPropagator())
 
     # Aggregate propagators
+    # TODO: replace with spliced SP3 files?
     sp3propagator = AggregateBoundedPropagator(sp3propagators)
 
     # Return aggregated propagator
