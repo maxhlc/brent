@@ -1,112 +1,186 @@
 # Standard imports
+from argparse import ArgumentParser
 from datetime import datetime, timedelta, timezone
+import json
 
-# Third party imports
+# Third-party imports
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import timeout_decorator
-
 
 # Internal imports
 import brent
-from main import main as fit
 
 
-def worker(arg):
+def load(fpath):
+    # Load configuration file
+    with open(fpath, "r") as fid:
+        arguments_raw = json.load(fid)
+
+    # Extract time parameters
+    times = arguments_raw["times"]
+    dateformat = "%Y-%m-%d"
+    start = datetime.strptime(times["start"], dateformat)
+    end = datetime.strptime(times["end"], dateformat)
+    frequency = f"{times['frequency']}D"
+    duration = [timedelta(iduration) for iduration in times["duration"]]
+    samples = times["samples"]
+
+    # Extract default model
+    model = arguments_raw["model"]
+
+    # TODO: add sample weighting options
+
+    # Extract spacecraft parameters
+    spacecraft = [
+        {
+            "tle": ispacecraft["tle"],
+            "sp3": ispacecraft["sp3"],
+            "sp3name": ispacecraft["sp3name"],
+            "output": ispacecraft["output"],
+            "model": {**model, **ispacecraft["model"]},
+        }
+        for ispacecraft in arguments_raw["spacecraft"]
+    ]
+
+    # Store arguments
+    arguments = {
+        "start": pd.date_range(start, end, freq=frequency),
+        "duration": duration,
+        "samples": samples,
+    }
+
+    # Return spacecraft and arguments
+    return spacecraft, arguments
+
+
+def fit(spacecraft, parameters):
+    # Extract dates
+    fitStartDate = parameters["start"]
+    fitDuration = parameters["duration"]
+    fitEndDate = fitStartDate + fitDuration
+
+    # Extract physical model parameters
+    model = brent.propagators.ModelParameters(**spacecraft["model"])
+
+    # Extract sample and test dates
+    # TODO: set sampling technique, testing duration
+    samples = parameters["samples"]
+    dates = pd.date_range(fitStartDate, fitEndDate, periods=samples)
+    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1H")
+
+    # Extract test propagator
+    testPropagator = spacecraft["sp3propagator"]
+
+    # Load TLEs
+    tlePropagator = brent.io.load_tle_propagator(
+        spacecraft["tle"], np.min(dates), np.max(dates)
+    )
+
+    # Generate psuedo-observation states
+    sampleStates = tlePropagator.propagate(dates)
+
+    # Create filter
+    # TODO: handle covariance provider
+    filter = brent.filter.OrekitBatchLeastSquares(dates, sampleStates, model)
+
+    # Execute filter
+    fitPropagator = filter.estimate()
+
+    # Get estimated covariance
+    fitCovariance = filter.covariance()[0:6, 0:6]
+
+    # Generate fit states
+    fitStates = fitPropagator.propagate(dates)
+
+    # Calculate RTN transformations
+    RTN = brent.frames.rtn(fitStates)
+
+    # Transform fit covariance to RTN
+    fitCovarianceRTN = RTN[0, :, :] @ fitCovariance @ RTN[0, :, :].T
+
+    # Calculate state residuals
+    deltaStates = sampleStates - fitStates
+
+    # Transform state residuals to RTN
+    deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
+
+    # Calculate residual sample covariances
+    residualCovariance = np.cov(deltaStates, rowvar=False)
+    residualCovarianceRTN = np.cov(deltaStatesRTN, rowvar=False)
+
+    # Calculate test states
+    sampleTestStates = tlePropagator.propagate(testDates)
+    fitTestStates = fitPropagator.propagate(testDates)
+    testStates = testPropagator.propagate(testDates)
+
+    # Calculate position error
+    sampleError = np.linalg.norm(sampleTestStates - testStates, axis=1)
+    fitError = np.linalg.norm(fitTestStates - testStates, axis=1)
+
+    # Calculate proportion of fit period where the fit outperforms the samples
+    proportion = np.mean(fitError <= sampleError)
+
+    # Return results
+    return {
+        "dates": dates,
+        "sampleStates": sampleStates,
+        "fitStates": fitStates,
+        "deltaStates": deltaStates,
+        "deltaStatesRTN": deltaStatesRTN,
+        "fitCovariance": fitCovariance,
+        "fitCovarianceRTN": fitCovarianceRTN,
+        "residualCovariance": residualCovariance,
+        "residualCovarianceRTN": residualCovarianceRTN,
+        "testDates": testDates,
+        "sampleTestStates": sampleTestStates,
+        "fitTestStates": fitTestStates,
+        "testStates": testStates,
+        "sampleError": sampleError,
+        "fitError": fitError,
+        "proportion": proportion,
+    }
+
+
+def fit_wrapper(inputs):
+    # Split the inputs
+    spacecraft, parameters = inputs
+
+    # Declare result dictionary with inputs
+    result = {**spacecraft, **parameters}
+
+    # Try to fit
     try:
-        # Create arguments dataclass
-        args_ = brent.io.Arguments(**arg, verbose=False, plot=False)
+        result.update(**fit(spacecraft, parameters))
+    except:
+        pass
 
-        # Wrap fit method with timeout
-        @timeout_decorator.timeout(360)
-        def timeout_fit(args):
-            return fit(args)
+    # Remove objects which cannot be pickled
+    del result["sp3propagator"]
 
-        # Return arguments with fit results
-        return {**arg, **timeout_fit(args_)}
-    except Exception as e:
-        # Print error
-        print(e)
-
-        # Return arguments
-        return {**arg}
+    # Return result
+    return result
 
 
-def main():
-    # Define default common model parameters
-    default_model = {
-        "cr": 0.0,
-        "potential": True,
-        "potential_degree": 10,
-        "potential_order": 10,
-        "moon": True,
-        "sun": True,
-        "srp": True,
-        "srp_estimate": True,
-    }
+def main(spacecraft, arguments):
+    # Load SP3 propagators
+    for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
+        ispacecraft["sp3propagator"] = brent.io.load_sp3_propagator(
+            ispacecraft["sp3"], ispacecraft["sp3name"]
+        )
 
-    # Define arguments
-    args_ = {
-        "start": pd.date_range(datetime(2022, 1, 1), datetime(2022, 11, 20), freq="3D"),
-        "duration": [timedelta(10)],
-        "spacecraft": [
-            {
-                "tle": "./data/tle/8820.json",
-                "sp3": "./data/sp3/lageos1/*.sp3",
-                "sp3name": "L51",
-                "output": "./output/LAGEOS1",
-                "model": brent.propagators.ModelParameters(
-                    mass=406.965,
-                    area_srp=0.282743338,
-                    **default_model
-                ),
-            },
-            {
-                "tle": "./data/tle/22195.json",
-                "sp3": "./data/sp3/lageos2/*.sp3",
-                "sp3name": "L52",
-                "output": "./output/LAGEOS2",
-                "model": brent.propagators.ModelParameters(
-                    mass=405.38,
-                    area_srp=0.282743338,
-                    **default_model
-                ),
-            },
-            {
-                "tle": "./data/tle/19751.json",
-                "sp3": "./data/sp3/etalon1/*.sp3",
-                "sp3name": "L53",
-                "output": "./output/ETALON1",
-                "model": brent.propagators.ModelParameters(
-                    mass=1415.0,
-                    area_srp=1.315098959,
-                    **default_model
-                ),
-            },
-            {
-                "tle": "./data/tle/20026.json",
-                "sp3": "./data/sp3/etalon2/*.sp3",
-                "sp3name": "L54",
-                "output": "./output/ETALON2",
-                "model": brent.propagators.ModelParameters(
-                    mass=1415.0,
-                    area_srp=1.315098959,
-                    **default_model
-                ),
-            },
-        ],
-    }
+    # Generate parameter permutations
+    argument_permutations = brent.util.generate_parameter_permutations(arguments)
 
-    # Generate argument perturbations
-    args = brent.util.generate_parameter_permutations(args_)
-
-    # Expand spacecraft arguments
-    args = [{**arg, **arg["spacecraft"]} for arg in args]
-    for arg in args:
-        del arg["spacecraft"]
+    # Generate input pairs
+    input_pairs = [
+        (ispacecraft, iarguments)
+        for iarguments in argument_permutations
+        for ispacecraft in spacecraft
+    ]
 
     # Execute fits
-    fits = [worker(arg) for arg in tqdm(args)]
+    fits = [fit_wrapper(arg) for arg in tqdm(input_pairs, desc="Fit exec")]
 
     # Create DataFrame of results
     df = pd.DataFrame(fits)
@@ -118,5 +192,13 @@ def main():
 
 
 if __name__ == "__main__":
-    # Execute main function
-    main()
+    # Parse input
+    parser = ArgumentParser()
+    parser.add_argument("--input", type=str, default="./input/sweep.json")
+    parser_args = parser.parse_args()
+
+    # Load arguments
+    spacecraft, arguments = load(parser_args.input)
+
+    # Execute
+    main(spacecraft, arguments)
