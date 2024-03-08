@@ -84,14 +84,86 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.tight_layout()
 
         # Export plot
-        plt.savefig(f"{fname}_window_rmse_{object}.png", dpi=600)
+        plt.savefig(f"{fname}_duration_rmse_{object}.png", dpi=600)
 
         # Close plot
         plt.close()
 
 
 def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
-    raise NotImplementedError
+    # Iterate through objects
+    for object in np.unique(df["sp3name"]):
+        # Extract corresponding sub-table for object
+        df_object = df[df["sp3name"] == object].copy()
+
+        # Extract x-y-z variables
+        x = df_object["fitEpoch"].to_numpy()
+        y = df_object["samples"].to_numpy()
+        z = df_object["fitErrorRMS"].to_numpy()
+
+        # Find unique x-y coordinates
+        xu = np.unique(x)
+        yu = np.unique(y)
+
+        # Calculate mesh size
+        nx = len(xu)
+        ny = len(yu)
+
+        # Iterate through x-y coordinates
+        for ix in xu:
+            for iy in yu:
+                # Extract indicies
+                idx = x == ix
+                idy = y == iy
+
+                # Find intersection
+                idxy = np.logical_and(idx, idy)
+
+                # Calculate number of corresponding points
+                n = np.sum(idxy.astype(int))
+
+                # Add NaN point if the point doesn't exist
+                if n == 0:
+                    x = np.append(x, ix)
+                    y = np.append(y, iy)
+                    z = np.append(z, np.nan)
+                elif n > 1:
+                    raise ValueError(f"Repeated point at ({ix}, {iy})")
+
+        # Sort points into mesh
+        idx = np.lexsort((y, x)).reshape((nx, ny))
+
+        # Create plot
+        fig, ax = plt.subplots(figsize=FIGSIZE)
+
+        # Plot mesh
+        plt.contourf(x[idx], y[idx], z[idx])
+
+        # Set limits
+        # TODO: dynamic
+        plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
+
+        # Set axis labels
+        plt.xlabel("Fit Epoch [-]")
+        plt.ylabel("Sample Size [-]")
+
+        # Add colour bar
+        plt.colorbar(label="Position RMSE [m]")
+
+        # Format dates
+        fig.autofmt_xdate()
+
+        # Add grid
+        plt.grid()
+
+        # Set layout
+        plt.tight_layout()
+
+        # Export plot
+        plt.savefig(f"{fname}_samples_rmse_{object}.png", dpi=600)
+
+        # Close plot
+        plt.close()
 
 
 def plot_errors(df: pd.DataFrame, window: np.timedelta64, fname: str) -> None:
@@ -158,12 +230,20 @@ if __name__ == "__main__":
     # Preprocess results
     df = preprocess(df)
 
-    # Plot window mesh
-    # TODO: check data in dataframe compatible
-    plot_window_mesh(df, fname)
+    # Calculate number of window and sample sizes
+    nwindow = len(np.unique(df["duration"]))
+    nsample = len(np.unique(df["samples"]))
 
-    # Plot sample mesh
-    # TODO: implement
+    # Check window and sample size compatibility
+    # TODO: consider merged tables
+    if (nwindow > 1) and (nsample == 1):
+        # Plot window mesh
+        plot_window_mesh(df, fname)
+    elif (nwindow == 1) and (nsample > 1):
+        # Plot sample mesh
+        plot_sample_mesh(df, fname)
+    else:
+        raise ValueError("Incompatible number of windows and samples")
 
     # Plot error histories
     for window in np.unique(df["duration"]):
