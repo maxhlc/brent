@@ -1,4 +1,5 @@
 # Standard imports
+from argparse import ArgumentParser
 from datetime import datetime
 
 # Third-party imports
@@ -222,9 +223,15 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    # Parse input
+    parser = ArgumentParser()
+    parser.add_argument("fname", type=str)
+    parser_args = parser.parse_args()
+
+    # Extract filename
+    fname = parser_args.fname
+
     # Load results
-    # TODO: CLI arguments
-    fname = "output/20240307_140100.pkl"
     df = pd.read_pickle(fname)
 
     # Preprocess results
@@ -243,7 +250,7 @@ if __name__ == "__main__":
         # Plot sample mesh
         plot_sample_mesh(df, fname)
     else:
-        raise ValueError("Incompatible number of windows and samples")
+        print("Incompatible number of windows and samples")
 
     # Plot error histories
     for window in np.unique(df["duration"]):
