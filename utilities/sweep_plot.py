@@ -167,56 +167,132 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.close()
 
 
-def plot_errors(df: pd.DataFrame, window: np.timedelta64, fname: str) -> None:
-    # Calculate number of days in window
-    days = int(window / np.timedelta64(1, "D"))
+def plot_proportion(df: pd.DataFrame, fname: str) -> None:
+    # Iterate through windows
+    for window in np.unique(df["duration"]):
+        # Iterate through samples
+        for samples in np.unique(df["samples"]):
+            # Calculate number of days in window
+            days = int(window / np.timedelta64(1, "D"))
 
-    # Extract subtable
-    df_window = df[df["duration"] == window].copy()
+            # Extract subtable
+            idx = np.logical_and(df["duration"] == window, df["samples"] == samples)
+            df_ = df[idx].copy()
+            df_ = df_[["testDaysPostFitEpoch", "sp3name", "errorDiffBetter"]]
 
-    # Create plot
-    fig, ax = plt.subplots(figsize=FIGSIZE)
+            # Expand data frame
+            df_ = (
+                df_.explode(["testDaysPostFitEpoch", "errorDiffBetter"])
+                .groupby(["sp3name", "testDaysPostFitEpoch"])
+                .mean()
+            )
 
-    # Plot position RMSEs
-    sns.lineplot(data=df_window, x="fitEpoch", y="fitErrorRMS", hue="sp3name")
+            # Create plot
+            fig, ax = plt.subplots(figsize=FIGSIZE)
 
-    # Set axis labels
-    plt.xlabel("Fit Epoch [-]")
-    plt.ylabel("Position RMSE [m]")
+            # Plot position RMSEs
+            sns.lineplot(
+                data=df_,
+                x="testDaysPostFitEpoch",
+                y="errorDiffBetter",
+                hue="sp3name"
+            )
 
-    # Update legend title
-    plt.legend(title="SP3 ID")
+            # Set axis labels
+            plt.xlabel("Elapsed Time Post-fit [days]")
+            plt.ylabel("Proportion [-]")
 
-    # Set limits
-    # TODO: dynamic
-    plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
-    plt.ylim((0, 10e3))
+            # Update legend title
+            plt.legend(title="SP3 ID")
 
-    # Format dates
-    fig.autofmt_xdate()
+            # Set axis limits
+            # TODO: dynamic x limits
+            plt.xlim((-days, 30))
+            plt.ylim((0.0, 1.0))
 
-    # Add grid
-    plt.grid()
+            # Plot reference lines
+            plt.axhline(0.5, color="black")
+            plt.axvline(0.0, color="black")
 
-    # Set layout
-    plt.tight_layout()
+            # Add grid
+            plt.grid()
 
-    # Export plot
-    plt.savefig(f"{fname}_rmse_{days}D.png", dpi=600)
+            # Set layout
+            plt.tight_layout()
 
-    # Close plot
-    plt.close()
+            # Export plot
+            plt.savefig(f"{fname}_proportion_{samples}S_{days}D.png", dpi=600)
+
+            # Close plot
+            plt.close()
+
+
+def plot_errors(df: pd.DataFrame, fname: str) -> None:
+    # Iterate through windows
+    for window in np.unique(df["duration"]):
+        # Iterate through samples
+        for samples in np.unique(df["samples"]):
+            # Calculate number of days in window
+            days = int(window / np.timedelta64(1, "D"))
+
+            # Extract subtable
+            df_ = df[df["duration"] == window].copy()
+
+            # Create plot
+            fig, ax = plt.subplots(figsize=FIGSIZE)
+
+            # Plot position RMSEs
+            sns.lineplot(data=df_, x="fitEpoch", y="fitErrorRMS", hue="sp3name")
+
+            # Set axis labels
+            plt.xlabel("Fit Epoch [-]")
+            plt.ylabel("Position RMSE [m]")
+
+            # Update legend title
+            plt.legend(title="SP3 ID")
+
+            # Set limits
+            # TODO: dynamic
+            plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
+            plt.ylim((0, 10e3))
+
+            # Format dates
+            fig.autofmt_xdate()
+
+            # Add grid
+            plt.grid()
+
+            # Set layout
+            plt.tight_layout()
+
+            # Export plot
+            plt.savefig(f"{fname}_rmse_{samples}S_{days}D.png", dpi=600)
+
+            # Close plot
+            plt.close()
 
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Make a copy of the table
     df_ = df.copy()
 
+    # Drop failed cases
+    df_.dropna(inplace=True)
+
     # Calculate fit epoch
     df_["fitEpoch"] = df_["start"] + df_["duration"]
 
+    # Calculate date relative to epoch
+    func = lambda dates, epoch: duration_to_days(dates - epoch)
+    df_["daysPostFitEpoch"] = df_.apply(lambda x: func(x.dates, x.fitEpoch), axis=1)
+    df_["testDaysPostFitEpoch"] = df_.apply(lambda x: func(x.testDates, x.fitEpoch), axis=1)
+
     # Calculate position RMSE
     df_["fitErrorRMS"] = df_["fitError"].apply(lambda x: np.sqrt(np.mean(x**2)))
+
+    # Calculate error difference
+    df_["errorDiff"] = df_["fitError"] - df_["sampleError"]
+    df_["errorDiffBetter"] = df_["errorDiff"].apply(lambda x: (x < 0.0).astype(float))
 
     # Return updated table
     return df_
@@ -252,6 +328,8 @@ if __name__ == "__main__":
     else:
         print("Incompatible number of windows and samples")
 
+    # Plot proportions
+    plot_proportion(df, fname)
+
     # Plot error histories
-    for window in np.unique(df["duration"]):
-        plot_errors(df, window, fname)
+    plot_errors(df, fname)
