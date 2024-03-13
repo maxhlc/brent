@@ -24,6 +24,17 @@
         "srp": false,
         "srp_estimate": false
     },
+    "noise": {
+        "frame": "rtn",
+        "std": [
+            0.43e3,
+            5.7e3,
+            0.17e3,
+            7.0,
+            0.43,
+            0.19
+        ]
+    },
     "spacecraft": [
         {
             "tle": "./data/tle/8820.json",

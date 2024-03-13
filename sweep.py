@@ -29,7 +29,8 @@ def load(fpath):
     # Extract default model
     model = arguments_raw["model"]
 
-    # TODO: add sample weighting options
+    # Extract noise model
+    noise = [arguments_raw["noise"]]
 
     # Extract spacecraft parameters
     spacecraft = [
@@ -48,6 +49,7 @@ def load(fpath):
         "start": pd.date_range(start, end, freq=frequency),
         "duration": duration,
         "samples": samples,
+        "noise": noise,
     }
 
     # Return spacecraft and arguments
@@ -62,6 +64,13 @@ def fit(spacecraft, parameters):
 
     # Extract physical model parameters
     model = brent.propagators.ModelParameters(**spacecraft["model"])
+
+    # Extract sample noise model
+    noise = parameters["noise"]
+    if noise["frame"] == "rtn":
+        covarianceProvider = brent.filter.RTNCovarianceProvider(np.array(noise["std"]))
+    else:
+        covarianceProvider = brent.filter.CovarianceProvider()
 
     # Extract sample and test dates
     # TODO: set sampling technique, testing duration
@@ -81,8 +90,9 @@ def fit(spacecraft, parameters):
     sampleStates = tlePropagator.propagate(dates)
 
     # Create filter
-    # TODO: handle covariance provider
-    filter = brent.filter.OrekitBatchLeastSquares(dates, sampleStates, model)
+    filter = brent.filter.OrekitBatchLeastSquares(
+        dates, sampleStates, model, covarianceProvider
+    )
 
     # Execute filter
     fitPropagator = filter.estimate()
@@ -152,8 +162,8 @@ def fit_wrapper(inputs):
     # Try to fit
     try:
         result.update(**fit(spacecraft, parameters))
-    except:
-        pass
+    except Exception as e:
+        tqdm.write(str(e))
 
     # Remove objects which cannot be pickled
     del result["sp3propagator"]
