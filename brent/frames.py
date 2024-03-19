@@ -52,15 +52,17 @@ def cartesian_to_keplerian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
         # Convert to Keplerian state
         keplerian = KeplerianOrbit(pv, frame, mu)
 
+        # Extract Keplerian elements
+        # TODO: angle type as input
+        a = keplerian.getA()
+        e = keplerian.getE()
+        i = keplerian.getI()
+        raan = keplerian.getRightAscensionOfAscendingNode()
+        aop = keplerian.getPerigeeArgument()
+        ma = keplerian.getMeanAnomaly()
+
         # Return extracted Keplerian elements
-        return [
-            keplerian.getA(),
-            keplerian.getE(),
-            keplerian.getI(),
-            keplerian.getRightAscensionOfAscendingNode(),
-            keplerian.getPerigeeArgument(),
-            keplerian.getMeanAnomaly(),
-        ]
+        return [a, e, i, raan, aop, ma]
 
     # Return Keplerian elements
     return np.array(
@@ -74,7 +76,7 @@ def keplerian_to_cartesian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
         dat = datetime_to_absolutedate(date)
 
         # Extract Keplerian elements
-        a, e, i, raan, aop, ta = state
+        a, e, i, raan, aop, ma = state
 
         # Ensure that the variables are floats
         a = float(a)
@@ -82,10 +84,11 @@ def keplerian_to_cartesian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
         i = float(i)
         raan = float(raan)
         aop = float(aop)
-        ta = float(ta)
+        ma = float(ma)
 
         # Create Keplerian representation
-        kep = KeplerianOrbit(a, e, i, aop, raan, ta, PositionAngle.MEAN, frame, dat, mu)
+        # TODO: angle type as input
+        kep = KeplerianOrbit(a, e, i, aop, raan, ma, PositionAngle.MEAN, frame, dat, mu)
 
         # Extract position and velocity
         pv = kep.getPVCoordinates()
