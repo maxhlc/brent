@@ -11,15 +11,23 @@ import seaborn as sns
 # Set output figure size
 FIGSIZE = (5.5, 4.0)
 
+# Declare name map
+SP3MAP = {
+    "L51": "LAGEOS-1",
+    "L52": "LAGEOS-2",
+    "L53": "Etalon 1",
+    "L54": "Etalon 2",
+}
+
 # Declare function to convert duration to days
 duration_to_days = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
 
 
 def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
     # Iterate through objects
-    for object in np.unique(df["sp3name"]):
+    for object in np.unique(df["name"]):
         # Extract corresponding sub-table for object
-        df_object = df[df["sp3name"] == object].copy()
+        df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
         x = df_object["fitEpoch"].to_numpy()
@@ -66,7 +74,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
 
         # Set limits
         # TODO: dynamic
-        plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
+        plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
 
         # Set axis labels
         plt.xlabel("Fit Epoch [-]")
@@ -93,9 +101,9 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
 
 def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
     # Iterate through objects
-    for object in np.unique(df["sp3name"]):
+    for object in np.unique(df["name"]):
         # Extract corresponding sub-table for object
-        df_object = df[df["sp3name"] == object].copy()
+        df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
         x = df_object["fitEpoch"].to_numpy()
@@ -142,7 +150,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
 
         # Set limits
         # TODO: dynamic
-        plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
+        plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
 
         # Set axis labels
         plt.xlabel("Fit Epoch [-]")
@@ -178,12 +186,12 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             # Extract subtable
             idx = np.logical_and(df["duration"] == window, df["samples"] == samples)
             df_ = df[idx].copy()
-            df_ = df_[["testDaysPostFitEpoch", "sp3name", "errorDiffBetter"]]
+            df_ = df_[["testDaysPostFitEpoch", "name", "errorDiffBetter"]]
 
             # Expand data frame
             df_ = (
                 df_.explode(["testDaysPostFitEpoch", "errorDiffBetter"])
-                .groupby(["sp3name", "testDaysPostFitEpoch"])
+                .groupby(["name", "testDaysPostFitEpoch"])
                 .mean()
             )
 
@@ -195,7 +203,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
                 data=df_,
                 x="testDaysPostFitEpoch",
                 y="errorDiffBetter",
-                hue="sp3name"
+                hue="name"
             )
 
             # Set axis labels
@@ -203,11 +211,11 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             plt.ylabel("Proportion [-]")
 
             # Update legend title
-            plt.legend(title="SP3 ID")
+            plt.legend(title="Object")
 
             # Set axis limits
             # TODO: dynamic x limits
-            plt.xlim((-days, 30))
+            plt.xlim((-10, 30))
             plt.ylim((0.0, 1.0))
 
             # Plot reference lines
@@ -242,18 +250,18 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             fig, ax = plt.subplots(figsize=FIGSIZE)
 
             # Plot position RMSEs
-            sns.lineplot(data=df_, x="fitEpoch", y="fitErrorRMS", hue="sp3name")
+            sns.lineplot(data=df_, x="fitEpoch", y="fitErrorRMS", hue="name")
 
             # Set axis labels
             plt.xlabel("Fit Epoch [-]")
             plt.ylabel("Position RMSE [m]")
 
             # Update legend title
-            plt.legend(title="SP3 ID")
+            plt.legend(title="Object")
 
             # Set limits
             # TODO: dynamic
-            plt.xlim((datetime(2022, 1, 1), datetime(2023, 1, 1)))
+            plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
             plt.ylim((0, 10e3))
 
             # Format dates
@@ -284,8 +292,10 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 
     # Calculate date relative to epoch
     func = lambda dates, epoch: duration_to_days(dates - epoch)
-    df_["daysPostFitEpoch"] = df_.apply(lambda x: func(x.dates, x.fitEpoch), axis=1)
-    df_["testDaysPostFitEpoch"] = df_.apply(lambda x: func(x.testDates, x.fitEpoch), axis=1)
+    func_dates = lambda x: func(x.dates, x.fitEpoch)
+    func_testDates = lambda x: func(x.testDates, x.fitEpoch)
+    df_["daysPostFitEpoch"] = df_.apply(func_dates, axis=1)
+    df_["testDaysPostFitEpoch"] = df_.apply(func_testDates, axis=1)
 
     # Calculate position RMSE
     df_["fitErrorRMS"] = df_["fitError"].apply(lambda x: np.sqrt(np.mean(x**2)))
@@ -293,6 +303,9 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Calculate error difference
     df_["errorDiff"] = df_["fitError"] - df_["sampleError"]
     df_["errorDiffBetter"] = df_["errorDiff"].apply(lambda x: (x < 0.0).astype(float))
+
+    # Map names
+    df_["name"] = df_["sp3name"].apply(lambda x: SP3MAP[x])
 
     # Return updated table
     return df_
