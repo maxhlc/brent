@@ -40,6 +40,7 @@ def load(fpath):
             "sp3name": ispacecraft["sp3name"],
             "output": ispacecraft["output"],
             "model": {**model, **ispacecraft["model"]},
+            "bias": ispacecraft["bias"],
         }
         for ispacecraft in arguments_raw["spacecraft"]
     ]
@@ -65,6 +66,15 @@ def fit(spacecraft, parameters):
     # Extract physical model parameters
     model = brent.propagators.ModelParameters(**spacecraft["model"])
 
+    # Extract bias model
+    bias = spacecraft["bias"]
+    if bias["model"] == "none":
+        biasModel = brent.bias.BiasModel()
+    elif bias["model"] == "simplifiedalongtracksinusoidal":
+        biasModel = brent.bias.SimplifiedAlongtrackSinusoidal(*bias["parameters"])
+    else:
+        raise ValueError("Unknown bias model")
+
     # Extract sample noise model
     noise = parameters["noise"]
     if noise["frame"] == "rtn":
@@ -88,6 +98,9 @@ def fit(spacecraft, parameters):
 
     # Generate psuedo-observation states
     sampleStates = tlePropagator.propagate(dates)
+
+    # Debias the sample states
+    sampleStates = biasModel.debias(dates, sampleStates)
 
     # Create filter
     filter = brent.filter.OrekitBatchLeastSquares(

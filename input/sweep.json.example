@@ -44,6 +44,15 @@
             "model": {
                 "mass": 406.965,
                 "area_srp": 0.282743338
+            },
+            "bias": {
+                "model": "simplifiedalongtracksinusoidal",
+                "parameters": [
+                    1.40700725e-05,
+                    2.75290181e01,
+                    6.81809676e-02,
+                    -1.78988015e-08
+                ]
             }
         },
         {
@@ -54,6 +63,15 @@
             "model": {
                 "mass": 405.38,
                 "area_srp": 0.282743338
+            },
+            "bias": {
+                "model": "simplifiedalongtracksinusoidal",
+                "parameters": [
+                    2.27751518e-06,
+                    2.65578921e01,
+                    -1.18937904e01,
+                    -4.00263767e-06
+                ]
             }
         },
         {
@@ -64,6 +82,15 @@
             "model": {
                 "mass": 1415.0,
                 "area_srp": 1.315098959
+            },
+            "bias": {
+                "model": "simplifiedalongtracksinusoidal",
+                "parameters": [
+                    0.0000481698,
+                    27.517413901,
+                    -0.9166897626,
+                    -0.0000004426
+                ]
             }
         },
         {
@@ -74,6 +101,15 @@
             "model": {
                 "mass": 1415.0,
                 "area_srp": 1.315098959
+            },
+            "bias": {
+                "model": "simplifiedalongtracksinusoidal",
+                "parameters": [
+                    6.74243067e-05,
+                    2.75729501e01,
+                    -1.79831002e-01,
+                    7.78580745e-08
+                ]
             }
         }
     ]

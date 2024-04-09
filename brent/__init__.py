@@ -10,6 +10,7 @@ vm = orekit.initVM()
 setup_orekit_curdir(paths.DATA_OREKIT_DIR)
 
 # Internal imports
+from . import bias
 from . import filter
 from . import frames
 from . import io
