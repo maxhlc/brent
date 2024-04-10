@@ -7,43 +7,16 @@ import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
 from org.orekit.estimation.measurements import ObservableSatellite, PV
 from org.orekit.estimation.leastsquares import BatchLSEstimator
-from org.orekit.utils import PVCoordinates, TimeStampedPVCoordinates
+from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.linear import QRDecomposer
 from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimizer
 from org.hipparchus.geometry.euclidean.threed import Vector3D
-import java.util
 
 # Internal imports
+from .covariance import CovarianceProvider
+from .weight import Weight
 import brent.frames
 import brent.propagators
-
-
-class CovarianceProvider:
-    def __init__(self):
-        pass
-
-    def __call__(self, state):
-        # Return identity matrix
-        return np.identity(len(state))
-
-
-class RTNCovarianceProvider(CovarianceProvider):
-    def __init__(self, sigma):
-        # Store standard deviations
-        self.sigma = sigma
-
-        # Create RTN covariance matrix
-        self.covarianceRTN = np.diag(sigma) ** 2
-
-    def __call__(self, state):
-        # Calculate RTN transform
-        rtn = brent.frames.rtn(state.reshape((1, 6)))[0, :, :]
-
-        # Rotate covariance matrix to inertial frame
-        covarianceXYZ = rtn.T @ self.covarianceRTN @ rtn
-
-        # Return inertial covariance
-        return covarianceXYZ
 
 
 class OrekitBatchLeastSquares:
@@ -59,7 +32,9 @@ class OrekitBatchLeastSquares:
         ]
 
         # Create propagator builder
-        propagatorBuilder = brent.propagators.default_propagator_builder_(states_[0], model)
+        propagatorBuilder = brent.propagators.default_propagator_builder_(
+            states_[0], model
+        )
 
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)
@@ -117,93 +92,6 @@ class OrekitBatchLeastSquares:
 
         # Return fit covariance
         return covariance
-
-
-class Weight:
-    def __init__(self):
-        pass
-
-    def __call__(self, y):
-        # Return identity matrix
-        return np.identity(len(y))
-
-
-class ConstantWeight(Weight):
-    def __init__(self, nvar, weights):
-        # Check for consistency
-        assert nvar == len(weights.ravel())
-
-        # Store number of variables and weights
-        self.nvar = nvar
-        self.weights = weights.ravel()
-
-    def __call__(self, y):
-        # Calculate number of residuals
-        ny = len(y)
-        nvar = self.nvar
-        nsam = ny // nvar
-
-        # Declare weight matrix
-        W = np.identity(len(y))
-
-        # Update weight matrix
-        W[np.diag_indices_from(W)] = np.tile(self.weights, nsam)
-
-        # Return weight matrix
-        return W
-
-
-class SampledWeight(Weight):
-    def __init__(self, nvar):
-        # Store number of variables
-        self.nvar = nvar
-
-    def __call__(self, y):
-        # Calculate number of residuals
-        ny = len(y)
-        nvar = self.nvar
-        nsam = ny // nvar
-
-        # Declare weight matrix
-        W = np.identity(len(y))
-
-        # Calculate residual covariance matrix and extract diagonal terms
-        yCov = np.cov(y.reshape((-1, self.nvar)), rowvar=False)
-        ySig = np.sqrt(np.diag(yCov))
-
-        # Update weight matrix
-        W[np.diag_indices_from(W)] /= np.tile(ySig, nsam)
-
-        # Return weight matrix
-        return W
-
-
-class CovarianceProviderWeight(Weight):
-    def __init__(self, states, covarianceProvider):
-        # Store number of variables
-        self.states = states
-
-        # Extract number of states and variables
-        self.nstates = states.shape[0]
-        self.nvar = states.shape[1]
-
-        # Calculate number of elements in residual vector
-        self.nelem = self.nstates * self.nvar
-
-        # Calculate variances
-        self.variances = np.concatenate(
-            [np.diag(covarianceProvider(state)) for state in states]
-        )
-
-        # Calculate weight matrix
-        self.W = np.diag(1.0 / np.sqrt(self.variances))
-
-    def __call__(self, y):
-        # Check number of residuals
-        assert len(y) == self.nelem
-
-        # Return weight matrix
-        return self.W
 
 
 class BatchLeastSquares:
