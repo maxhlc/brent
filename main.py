@@ -29,15 +29,22 @@ def main(args: brent.io.Arguments):
     # Generate pseudo-observation states
     sampleStates = tlePropagator.propagate(dates)
 
-    # Create filter
-    filter = brent.filter.BatchLeastSquares(
+    # Declare propagator builder
+    builder = brent.propagators.default_propagator_builder(
+        dates[0], sampleStates[0, :], args.model
+    )
+
+    # Generate observations
+    observations = brent.filter.generate_observations(
         dates,
         sampleStates,
-        args.model,
         brent.filter.RTNCovarianceProvider(
             np.array([0.43e3, 5.7e3, 0.17e3, 7.0, 0.43, 0.19])
         ),
     )
+
+    # Create filter
+    filter = brent.filter.BatchLeastSquares(builder, observations)
 
     # Execute filter
     fitPropagator = filter.estimate()

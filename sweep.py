@@ -102,10 +102,18 @@ def fit(spacecraft, parameters):
     # Debias the sample states
     sampleStates = biasModel.debias(dates, sampleStates)
 
-    # Create filter
-    filter = brent.filter.BatchLeastSquares(
-        dates, sampleStates, model, covarianceProvider
+    # Declare propagator builder
+    builder = brent.propagators.default_propagator_builder(
+        dates[0], sampleStates[0, :], model
     )
+
+    # Generate observations
+    observations = brent.filter.generate_observations(
+        dates, sampleStates, covarianceProvider
+    )
+
+    # Create filter
+    filter = brent.filter.BatchLeastSquares(builder, observations)
 
     # Execute filter
     fitPropagator = filter.estimate()
