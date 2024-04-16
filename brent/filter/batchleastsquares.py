@@ -1,6 +1,5 @@
 # Third-party imports
 import numpy as np
-import scipy.optimize
 
 # Orekit imports
 import orekit
@@ -14,12 +13,11 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
 from .covariance import CovarianceProvider
-from .weight import Weight
 import brent.frames
 import brent.propagators
 
 
-class OrekitBatchLeastSquares:
+class BatchLeastSquares:
     def __init__(self, dates, states, model, covarianceProvider=CovarianceProvider()):
         # Generate states in Orekit format
         states_ = [
@@ -92,86 +90,3 @@ class OrekitBatchLeastSquares:
 
         # Return fit covariance
         return covariance
-
-
-class BatchLeastSquares:
-    def __init__(self, func, wfunc=Weight(), eps=1e-8, niter=25, decov=1e-6):
-        # Store functions
-        self.func = func
-        self.wfunc = wfunc
-
-        # Store solver parameters
-        self.eps = eps
-        self.niter = niter
-        self.decov = decov
-
-        # Declare lists for intermediate results
-        self.idx = 0
-        self.x_ = []
-        self.y_ = []
-        self.J_ = []
-        self.W_ = []
-        self.A_ = []
-        self.b_ = []
-        self.e_ = []
-        self.dx_ = []
-        self.de_ = []
-
-    def estimate(self, x_):
-        # Make a copy of the initial guess
-        x = np.copy(x_)
-
-        # Iterate
-        for iter in range(self.niter):
-            # Calculate error vector and its Jacobian
-            y = self.func(x)
-            J = scipy.optimize.approx_fprime(x, self.func, self.eps * np.abs(x))
-
-            # Calculate weight matrix
-            W = self.wfunc(y)
-
-            # Calculate linear system matrices
-            A = J.T @ W @ J
-            b = J.T @ W @ y
-
-            # Calculate error
-            e = np.sqrt(y.T @ W @ y)
-
-            # Calculate solution update
-            dx = -np.linalg.solve(A, b)
-
-            # Store intermediate results
-            self.x_.append(x)
-            self.y_.append(y)
-            self.J_.append(J)
-            self.W_.append(W)
-            self.A_.append(A)
-            self.b_.append(b)
-            self.e_.append(e)
-            self.dx_.append(dx)
-
-            # Calculate percentage change
-            if iter >= 1:
-                de = self.e_[iter] / self.e_[iter - 1] - 1
-            else:
-                de = np.inf
-
-            # Store percentage change
-            self.de_.append(de)
-
-            # Break loop if converged
-            if np.abs(de) < self.decov:
-                break
-
-            # Update solution
-            x += dx
-
-        # Calculate optimal iteration
-        self.idx = np.argmin(self.e_)
-
-        # Return optimal solution
-        return self.x_[self.idx]
-
-    def covariance(self):
-        # Return fit covariance
-        return np.linalg.inv(self.A_[self.idx])

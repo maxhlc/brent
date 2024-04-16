@@ -30,7 +30,7 @@ def main(args: brent.io.Arguments):
     sampleStates = tlePropagator.propagate(dates)
 
     # Create filter
-    filter = brent.filter.OrekitBatchLeastSquares(
+    filter = brent.filter.BatchLeastSquares(
         dates,
         sampleStates,
         args.model,
