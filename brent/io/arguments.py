@@ -1,10 +1,13 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 
 # Internal imports
-import brent.propagators
+from brent.propagators import NumericalPropagatorParameters
 
 
 @dataclass
@@ -21,23 +24,23 @@ class Arguments:
     sp3name: str
 
     # Model parameters
-    model: brent.propagators.ModelParameters
+    model: NumericalPropagatorParameters
 
     # Output parameters
     verbose: bool
     plot: bool
     output: str
 
+    @staticmethod
+    def load(path: str) -> Arguments:
+        # Load argument file
+        with open(path, "r") as fid:
+            args = json.load(fid)
 
-def load_arguments(path):
-    # Load argument file
-    with open(path, "r") as fid:
-        args = json.load(fid)
+        # Cast required types
+        args["start"] = datetime.strptime(args["start"], "%Y-%m-%d")
+        args["duration"] = timedelta(args["duration"])
+        args["model"] = NumericalPropagatorParameters(**args["model"])
 
-    # Cast required types
-    args["start"] = datetime.strptime(args["start"], "%Y-%m-%d")
-    args["duration"] = timedelta(args["duration"])
-    args["model"] = brent.propagators.ModelParameters(**args["model"])
-
-    # Return arguments
-    return Arguments(**args)
+        # Return arguments
+        return Arguments(**args)

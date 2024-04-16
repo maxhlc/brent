@@ -9,10 +9,12 @@ from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
-from brent.propagators import DEFAULT_ECI, DEFAULT_MU
+from brent.propagators import Constants
 
 
-def cartesian_to_keplerian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
+def cartesian_to_keplerian(
+    dates, states, mu=Constants.DEFAULT_MU, frame=Constants.DEFAULT_ECI
+):
     def _cartesian_to_keplerian(date, state):
         # Convert date and state to Orekit format
         dat = datetime_to_absolutedate(date)
@@ -43,7 +45,9 @@ def cartesian_to_keplerian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
     )
 
 
-def keplerian_to_cartesian(dates, states, mu=DEFAULT_MU, frame=DEFAULT_ECI):
+def keplerian_to_cartesian(
+    dates, states, mu=Constants.DEFAULT_MU, frame=Constants.DEFAULT_ECI
+):
     def _keplerian_to_cartesian(date, state):
         # Convert date to Orekit format
         dat = datetime_to_absolutedate(date)

@@ -64,7 +64,7 @@ def fit(spacecraft, parameters):
     fitEndDate = fitStartDate + fitDuration
 
     # Extract physical model parameters
-    model = brent.propagators.ModelParameters(**spacecraft["model"])
+    model = brent.propagators.NumericalPropagatorParameters(**spacecraft["model"])
 
     # Extract bias model
     bias = spacecraft["bias"]
@@ -92,7 +92,7 @@ def fit(spacecraft, parameters):
     testPropagator = spacecraft["sp3propagator"]
 
     # Load TLEs
-    tlePropagator = brent.io.load_tle_propagator(
+    tlePropagator = brent.propagators.TLEPropagator.load(
         spacecraft["tle"], np.min(dates), np.max(dates)
     )
 
@@ -103,7 +103,7 @@ def fit(spacecraft, parameters):
     sampleStates = biasModel.debias(dates, sampleStates)
 
     # Declare propagator builder
-    builder = brent.propagators.default_propagator_builder(
+    builder = brent.propagators.NumericalPropagator.builder(
         dates[0], sampleStates[0, :], model
     )
 
@@ -196,7 +196,7 @@ def fit_wrapper(inputs):
 def main(spacecraft, arguments):
     # Load SP3 propagators
     for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
-        ispacecraft["sp3propagator"] = brent.io.load_sp3_propagator(
+        ispacecraft["sp3propagator"] = brent.propagators.SP3Propagator.load(
             ispacecraft["sp3"], ispacecraft["sp3name"]
         )
 

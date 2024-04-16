@@ -24,13 +24,13 @@ def main(args: brent.io.Arguments):
     dates = pd.date_range(fitStartDate, fitEndDate, periods=100)
 
     # Load TLE propagator
-    tlePropagator = brent.io.load_tle_propagator(args.tle, dates[0], dates[-1])
+    tlePropagator = brent.propagators.TLEPropagator.load(args.tle, dates[0], dates[-1])
 
     # Generate pseudo-observation states
     sampleStates = tlePropagator.propagate(dates)
 
     # Declare propagator builder
-    builder = brent.propagators.default_propagator_builder(
+    builder = brent.propagators.NumericalPropagator.builder(
         dates[0], sampleStates[0, :], args.model
     )
 
@@ -72,7 +72,7 @@ def main(args: brent.io.Arguments):
     residualCovarianceRTN = np.cov(deltaStatesRTN, rowvar=False)
 
     # Load SP3 data
-    testPropagator = brent.io.load_sp3_propagator(args.sp3, args.sp3name)
+    testPropagator = brent.propagators.SP3Propagator.load(args.sp3, args.sp3name)
 
     # Create test dates
     testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1H")
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     parser_args = parser.parse_args()
 
     # Load arguments
-    args = brent.io.load_arguments(parser_args.input)
+    args = brent.io.Arguments.load(parser_args.input)
 
     # Execute
     main(args)
