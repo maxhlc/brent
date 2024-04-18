@@ -7,14 +7,20 @@ import pandas as pd
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
+from org.orekit.orbits import CartesianOrbit, PositionAngle
+from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
 from org.orekit.propagation.analytical.tle import (
     TLE,
     TLEPropagator as OrekitTLEPropagator,
 )
+from org.orekit.propagation.conversion import TLEPropagatorBuilder
+from org.orekit.utils import TimeStampedPVCoordinates
+from org.hipparchus.geometry.euclidean.threed import Vector3D
 import java.util
 
 # Internal imports
+from brent import Constants
 from .propagator import Propagator
 
 
@@ -97,3 +103,76 @@ class TLEPropagator:
 
         # Return propagator
         return TLEPropagator.propagator(tles)
+
+    @staticmethod
+    def __template(date):
+        # Default metadata
+        satelliteNumber = 0
+        classification = " "
+        launchYear = 0
+        launchNumber = 0
+        launchPiece = "   "
+        ephemerisType = 0
+        elementNumber = 0
+        revolutionNumberAtEpoch = 0
+
+        # Set epoch
+        epoch = datetime_to_absolutedate(date)
+
+        # Default parameters
+        meanMotion = 0.0
+        meanMotionFirstDerivative = 0.0
+        meanMotionSecondDerivative = 0.0
+        e = 0.0
+        i = 0.0
+        pa = 0.0
+        raan = 0.0
+        meanAnomaly = 0.0
+        bStar = 0.0
+
+        # Return TLE template
+        return TLE(
+            satelliteNumber,
+            classification,
+            launchYear,
+            launchNumber,
+            launchPiece,
+            ephemerisType,
+            elementNumber,
+            epoch,
+            meanMotion,
+            meanMotionFirstDerivative,
+            meanMotionSecondDerivative,
+            e,
+            i,
+            pa,
+            raan,
+            meanAnomaly,
+            revolutionNumberAtEpoch,
+            bStar,
+        )
+
+    @staticmethod
+    def builder(date, state, bstar=False):
+        # Convert date and state to Orekit format
+        date_ = datetime_to_absolutedate(date)
+        pos_ = Vector3D(*state[0:3].tolist())
+        vel_ = Vector3D(*state[3:6].tolist())
+        state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
+        orbit = CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
+
+        # Create template TLE
+        templateTLE = TLEPropagator.__template(date)
+
+        # Generate initial TLE
+        tle = TLE.stateToTLE(SpacecraftState(orbit), templateTLE)
+
+        # Iterate through drivers
+        for driver in tle.getParametersDrivers():
+            # Enable BSTAR driver
+            if driver.getName() == TLE.B_STAR:
+                driver.setSelected(bstar)
+
+        # Return TLE builder
+        # TODO: change position scale?
+        return TLEPropagatorBuilder(tle, PositionAngle.MEAN, 1.0)
