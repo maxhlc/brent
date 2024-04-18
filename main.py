@@ -75,7 +75,7 @@ def main(args: brent.io.Arguments):
     testPropagator = brent.propagators.SP3Propagator.load(args.sp3, args.sp3name)
 
     # Create test dates
-    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1H")
+    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1h")
 
     # Calculate test states
     sampleTestStates = tlePropagator.propagate(testDates)

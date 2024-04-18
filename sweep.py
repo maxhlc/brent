@@ -86,7 +86,7 @@ def fit(spacecraft, parameters):
     # TODO: set sampling technique, testing duration
     samples = parameters["samples"]
     dates = pd.date_range(fitStartDate, fitEndDate, periods=samples)
-    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1H")
+    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1h")
 
     # Extract test propagator
     testPropagator = spacecraft["sp3propagator"]
