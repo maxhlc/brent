@@ -9,7 +9,7 @@ from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
-from brent.propagators import Constants
+from brent import Constants
 
 
 def cartesian_to_keplerian(

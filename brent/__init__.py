@@ -9,6 +9,9 @@ from orekit.pyhelpers import setup_orekit_curdir
 vm = orekit.initVM()
 setup_orekit_curdir(paths.DATA_OREKIT_DIR)
 
+# Load constants
+from .constants import Constants
+
 # Internal imports
 from . import bias
 from . import filter

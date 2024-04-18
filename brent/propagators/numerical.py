@@ -29,8 +29,8 @@ from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
-from .constants import Constants
 from .propagator import Propagator
+from brent import Constants
 
 # Default parameters
 DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)

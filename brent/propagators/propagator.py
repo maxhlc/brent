@@ -6,7 +6,7 @@ import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
 
 # Internal imports
-from .constants import Constants
+from brent import Constants
 
 
 class Propagator:
