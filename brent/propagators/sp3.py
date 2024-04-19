@@ -8,6 +8,7 @@ from glob import glob
 import orekit
 from org.orekit.data import DataSource
 from org.orekit.files.sp3 import SP3, SP3Parser
+from org.orekit.propagation.analytical import AggregateBoundedPropagator
 import java.util
 
 # Internal imports
@@ -24,7 +25,7 @@ class SP3Propagator(WrappedPropagator):
         # Create SP3 parser
         sp3parser = SP3Parser()
 
-        # Declare list for propagators
+        # Declare list for SP3 files
         sp3list = java.util.ArrayList()
 
         # Iterate through paths
@@ -41,6 +42,24 @@ class SP3Propagator(WrappedPropagator):
         # Splice SP3 files together
         sp3 = SP3.splice(sp3list)
 
+        # TODO: fix SP3Ephemeris.getPropagator() not available through Orekit wrapper
+
+        # Declare list for SP3 propagators
+        sp3propagators = java.util.ArrayList()
+
+        # Extract SP3 segments
+        segments = sp3.getEphemeris(id).getSegments()
+
+        # Extract number of segments
+        nsegments = segments.size()
+
+        # Iterate through segments
+        for idx in range(nsegments):
+            # Extract propagator
+            sp3propagators.add(segments.get(idx).getPropagator())
+
+        # Create aggregate propagator
+        sp3aggregated = AggregateBoundedPropagator(sp3propagators)
+
         # Return propagator
-        # TODO: fix getPropagator not available through Orekit wrapper
-        return SP3Propagator(sp3.getEphemeris(id).getPropagator())
+        return SP3Propagator(sp3aggregated)
