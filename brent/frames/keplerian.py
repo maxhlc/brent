@@ -4,7 +4,7 @@ import numpy as np
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
-from org.orekit.orbits import KeplerianOrbit, PositionAngle
+from org.orekit.orbits import KeplerianOrbit, PositionAngleType
 from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
@@ -65,7 +65,7 @@ def keplerian_to_cartesian(
 
         # Create Keplerian representation
         # TODO: angle type as input
-        kep = KeplerianOrbit(a, e, i, aop, raan, ma, PositionAngle.MEAN, frame, dat, mu)
+        kep = KeplerianOrbit(a, e, i, aop, raan, ma, PositionAngleType.MEAN, frame, dat, mu)
 
         # Extract position and velocity
         pv = kep.getPVCoordinates()

@@ -19,7 +19,7 @@ from org.orekit.forces.radiation import (
     IsotropicRadiationSingleCoefficient,
     RadiationSensitive,
 )
-from org.orekit.orbits import CartesianOrbit, PositionAngle
+from org.orekit.orbits import CartesianOrbit, PositionAngleType
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.conversion import (
     NumericalPropagatorBuilder,
@@ -67,7 +67,7 @@ class NumericalPropagator:
         propagatorBuilder = NumericalPropagatorBuilder(
             CartesianOrbit(state, Constants.DEFAULT_ECI, Constants.DEFAULT_MU),
             DEFAULT_INTEGRATOR,
-            PositionAngle.MEAN,
+            PositionAngleType.MEAN,
             1.0,
         )
 

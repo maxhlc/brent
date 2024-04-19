@@ -7,7 +7,7 @@ import pandas as pd
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
-from org.orekit.orbits import CartesianOrbit, PositionAngle
+from org.orekit.orbits import CartesianOrbit, PositionAngleType
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
 from org.orekit.propagation.analytical.tle import (
@@ -175,4 +175,4 @@ class TLEPropagator:
 
         # Return TLE builder
         # TODO: change position scale?
-        return TLEPropagatorBuilder(tle, PositionAngle.MEAN, 1.0)
+        return TLEPropagatorBuilder(tle, PositionAngleType.MEAN, 1.0)
