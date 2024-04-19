@@ -10,30 +10,35 @@ from brent import Constants
 
 
 class Propagator:
+
+    def _propagate(self, date, frame=Constants.DEFAULT_ECI):
+        # Raise error
+        raise NotImplementedError
+
+    def propagate(self, dates, frame=Constants.DEFAULT_ECI):
+        # Return states array
+        return np.array([self._propagate(date, frame) for date in dates])
+
+
+class WrappedPropagator(Propagator):
+
     def __init__(self, propagator):
         # Store propagator
         self.propagator = propagator
 
-    def propagate(self, dates, frame=Constants.DEFAULT_ECI):
-        # Declare states array
-        states = np.empty((len(dates), 6))
-        states.fill(np.nan)
+    def _propagate(self, date, frame=Constants.DEFAULT_ECI):
+        # Convert date to Orekit format
+        date_ = datetime_to_absolutedate(date)
 
-        # Iterate through dates
-        for idx, date in enumerate(dates):
-            # Convert date to Orekit format
-            date_ = datetime_to_absolutedate(date)
+        # Propagate state
+        state_ = self.propagator.getPVCoordinates(date_, frame)
 
-            # Propagate state
-            state = self.propagator.getPVCoordinates(date_, frame)
+        # Extract position and velocity
+        pos = state_.getPosition().toArray()
+        vel = state_.getVelocity().toArray()
 
-            # Extract position and velocity
-            pos = state.getPosition().toArray()
-            vel = state.getVelocity().toArray()
+        # Concatenate position and velocity
+        state = np.array(pos + vel)
 
-            # Update state matrix
-            states[idx, 0:3] = pos
-            states[idx, 3:6] = vel
-
-        # Return states array
-        return states
+        # Return state vector
+        return state

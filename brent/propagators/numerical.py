@@ -8,7 +8,7 @@ import numpy as np
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
-from org.orekit.bodies import CelestialBodyFactory
+from org.orekit.bodies import CelestialBodyFactory, OneAxisEllipsoid
 from org.orekit.forces.gravity import (
     HolmesFeatherstoneAttractionModel,
     ThirdBodyAttraction,
@@ -29,7 +29,7 @@ from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
-from .propagator import Propagator
+from .propagator import WrappedPropagator
 from brent import Constants
 
 # Default parameters
@@ -57,7 +57,34 @@ class NumericalPropagatorParameters:
     srp_estimate: bool
 
 
-class NumericalPropagator:
+class NumericalPropagator(WrappedPropagator):
+
+    def __init__(
+        self, date: datetime, state: np.ndarray, model: NumericalPropagatorParameters
+    ):
+        # Create propagator builder
+        propagatorBuilder = NumericalPropagator.builder(date, state, model)
+
+        # Calculate number of parameters
+        n = len(propagatorBuilder.getSelectedNormalizedParameters())
+
+        # Create propagator
+        propagator = propagatorBuilder.buildPropagator(n * [1.0])
+
+        # Convert date and state to Orekit format
+        date_ = datetime_to_absolutedate(date)
+        pos_ = Vector3D(*state[0:3].tolist())
+        vel_ = Vector3D(*state[3:6].tolist())
+        state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
+        spacecraftState = SpacecraftState(
+            CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
+        )
+
+        # Ensure initial state is correct
+        propagator.setInitialState(spacecraftState)
+
+        # Initialise wrapped propagator
+        super().__init__(propagator)
 
     @staticmethod
     def __builder(
@@ -114,7 +141,11 @@ class NumericalPropagator:
             # Create SRP force
             srp = SolarRadiationPressure(
                 sun,
-                Constants.DEFAULT_RADIUS,
+                OneAxisEllipsoid(
+                    Constants.DEFAULT_RADIUS,
+                    Constants.DEFAULT_FLATTENING,
+                    Constants.DEFAULT_ECEF,
+                ),
                 IsotropicRadiationSingleCoefficient(model.area_srp, model.cr),
             )
 
@@ -144,31 +175,3 @@ class NumericalPropagator:
 
         # Return default propagator builder
         return NumericalPropagator.__builder(state_, model)
-
-    @staticmethod
-    def propagator(
-        date: datetime, state: np.ndarray, model: NumericalPropagatorParameters
-    ):
-        # Create propagator builder
-        propagatorBuilder = NumericalPropagator.builder(date, state, model)
-
-        # Calculate number of parameters
-        n = len(propagatorBuilder.getSelectedNormalizedParameters())
-
-        # Create propagator
-        propagator = propagatorBuilder.buildPropagator(n * [1.0])
-
-        # Convert date and state to Orekit format
-        date_ = datetime_to_absolutedate(date)
-        pos_ = Vector3D(*state[0:3].tolist())
-        vel_ = Vector3D(*state[3:6].tolist())
-        state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
-        spacecraftState = SpacecraftState(
-            CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
-        )
-
-        # Ensure initial state is correct
-        propagator.setInitialState(spacecraftState)
-
-        # Return numerical propagator
-        return Propagator(propagator)

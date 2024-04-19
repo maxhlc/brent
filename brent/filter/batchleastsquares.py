@@ -34,7 +34,7 @@ class BatchLeastSquares:
 
     def estimate(self):
         # Execute fit propagator
-        return brent.propagators.Propagator(self.estimator.estimate()[0])
+        return brent.propagators.WrappedPropagator(self.estimator.estimate()[0])
 
     def covariance(self):
         # Extract estimated covariance

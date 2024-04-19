@@ -1,63 +1,67 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from datetime import datetime
 
 # Third-party imports
+import numpy as np
 import pandas as pd
 
 # Orekit imports
 import orekit
-from orekit.pyhelpers import datetime_to_absolutedate
+from orekit.pyhelpers import datetime_to_absolutedate, absolutedate_to_datetime
 from org.orekit.orbits import CartesianOrbit, PositionAngleType
 from org.orekit.propagation import SpacecraftState
-from org.orekit.propagation.analytical import AggregateBoundedPropagator
 from org.orekit.propagation.analytical.tle import (
     TLE,
     TLEPropagator as OrekitTLEPropagator,
 )
+from org.orekit.propagation.analytical.tle.generation import (
+    FixedPointTleGenerationAlgorithm,
+)
 from org.orekit.propagation.conversion import TLEPropagatorBuilder
 from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
-import java.util
 
 # Internal imports
 from brent import Constants
-from .propagator import Propagator
+from .propagator import Propagator, WrappedPropagator
 
 
-class TLEPropagator:
+class TLEPropagator(Propagator):
 
-    @staticmethod
-    def propagator(tles: list[TLE]) -> Propagator:
+    def __init__(self, tle: list[TLE]):
+        # TODO: allow input of single TLE
+
         # Check for number of TLEs
-        if len(tles) < 1:
+        if len(tle) < 1:
             raise ValueError("Insufficent number of TLEs")
 
-        # TODO: sort TLEs to ensure in order?
+        # Store epochs and propagators
+        epochs = [absolutedate_to_datetime(itle.getDate()) for itle in tle]
+        propagators = [
+            WrappedPropagator(OrekitTLEPropagator.selectExtrapolator(itle))
+            for itle in tle
+        ]
 
-        # Declare map for propagators
-        propagatorMap = java.util.TreeMap()
+        # Store sorted epoch/propagator pairs
+        self.propagators = sorted(zip(epochs, propagators), key=lambda x: x[0])
 
-        # Iterate through TLEs
-        for tle in tles:
-            # Extract epoch date
-            epoch = tle.getDate()
+    def _propagate(self, date, frame=Constants.DEFAULT_ECI):
+        # Select propagator
+        epochs = np.array([propagator[0] for propagator in self.propagators])
+        idx: int = np.searchsorted(epochs, date, side="left")
 
-            # Create propagator
-            propagator = OrekitTLEPropagator.selectExtrapolator(tle)
+        # Clip index to prevent out-of-range list access
+        # NOTE: use last TLE in set if none available ahead of propagation date
+        idx = np.clip(idx, 0, len(epochs) - 1)
 
-            # Add to map
-            propagatorMap.put(epoch, propagator)
+        # Extract corresponding propagator
+        propagator = self.propagators[idx][1]
 
-        # Extract start and end dates
-        # TODO: review dates
-        dateStart = tles[0].getDate()
-        dateEnd = tles[-1].getDate()
-
-        # Return aggregate propagator
-        tlePropagator = AggregateBoundedPropagator(propagatorMap, dateStart, dateEnd)
-
-        # Return TLE propagator
-        return Propagator(tlePropagator)
+        # Return propagated state
+        return propagator._propagate(date, frame)
 
     @staticmethod
     def __load(
@@ -97,12 +101,12 @@ class TLEPropagator:
     @staticmethod
     def load(
         path: str, start: datetime = datetime.min, end: datetime = datetime.max
-    ) -> Propagator:
+    ) -> TLEPropagator:
         # Load TLEs
         tles = TLEPropagator.__load(path, start, end)
 
-        # Return propagator
-        return TLEPropagator.propagator(tles)
+        # Return TLE propagator
+        return TLEPropagator(tles)
 
     @staticmethod
     def __template(date):
@@ -165,7 +169,9 @@ class TLEPropagator:
         templateTLE = TLEPropagator.__template(date)
 
         # Generate initial TLE
-        tle = TLE.stateToTLE(SpacecraftState(orbit), templateTLE)
+        tle = TLE.stateToTLE(
+            SpacecraftState(orbit), templateTLE, FixedPointTleGenerationAlgorithm()
+        )
 
         # Iterate through drivers
         for driver in tle.getParametersDrivers():
@@ -175,4 +181,6 @@ class TLEPropagator:
 
         # Return TLE builder
         # TODO: change position scale?
-        return TLEPropagatorBuilder(tle, PositionAngleType.MEAN, 1.0)
+        return TLEPropagatorBuilder(
+            tle, PositionAngleType.MEAN, 1.0, FixedPointTleGenerationAlgorithm()
+        )

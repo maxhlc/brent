@@ -1,21 +1,23 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from glob import glob
 
 # Orekit imports
 import orekit
 from org.orekit.data import DataSource
-from org.orekit.files.sp3 import SP3Parser
-from org.orekit.propagation.analytical import AggregateBoundedPropagator
+from org.orekit.files.sp3 import SP3, SP3Parser
 import java.util
 
 # Internal imports
-from .propagator import Propagator
+from .propagator import WrappedPropagator
 
 
-class SP3Propagator:
+class SP3Propagator(WrappedPropagator):
 
     @staticmethod
-    def load(path, id):
+    def load(path: str, id: str) -> SP3Propagator:
         # Create glob of paths
         paths = glob(path)
 
@@ -23,7 +25,7 @@ class SP3Propagator:
         sp3parser = SP3Parser()
 
         # Declare list for propagators
-        sp3propagators = java.util.ArrayList()
+        sp3list = java.util.ArrayList()
 
         # Iterate through paths
         for path in paths:
@@ -33,12 +35,12 @@ class SP3Propagator:
             # Parse SP3 data
             sp3data = sp3parser.parse(sp3file)
 
-            # Extract propagator and add to list
-            sp3propagators.add(sp3data.getSatellites().get(id).getPropagator())
+            # Add SP3 data to list
+            sp3list.add(sp3data)
 
-        # Aggregate propagators
-        # TODO: replace with spliced SP3 files?
-        sp3propagator = AggregateBoundedPropagator(sp3propagators)
+        # Splice SP3 files together
+        sp3 = SP3.splice(sp3list)
 
-        # Return aggregated propagator
-        return Propagator(sp3propagator)
+        # Return propagator
+        # TODO: fix getPropagator not available through Orekit wrapper
+        return SP3Propagator(sp3.getEphemeris(id).getPropagator())

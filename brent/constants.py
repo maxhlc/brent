@@ -14,4 +14,5 @@ class Constants:
 
     # Default Earth properties
     DEFAULT_MU = OrekitConstants.EIGEN5C_EARTH_MU
-    DEFAULT_RADIUS = OrekitConstants.EIGEN5C_EARTH_EQUATORIAL_RADIUS
+    DEFAULT_RADIUS = OrekitConstants.IERS2010_EARTH_EQUATORIAL_RADIUS
+    DEFAULT_FLATTENING = OrekitConstants.IERS2010_EARTH_FLATTENING
