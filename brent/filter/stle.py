@@ -49,7 +49,7 @@ class SyntheticTLEGenerator:
         )
 
         # Generate initial guess
-        self.x0 = SyntheticTLEGenerator.__tle_to_variables(initialTLE)
+        self.x0 = SyntheticTLEGenerator._tle_to_vector(initialTLE)
 
     def estimate(self) -> TLEPropagator:
         # Load dates and states
@@ -60,15 +60,27 @@ class SyntheticTLEGenerator:
         # Load initial guess
         x0 = self.x0
 
+        # Calculate position and velocity magnitudes
+        r0 = np.linalg.norm(states[-1, 0:3])
+        v0 = np.linalg.norm(states[-1, 3:6])
+
+        # Calculate scaling units
+        lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
+        vu = np.sqrt(Constants.DEFAULT_MU / lu)
+        scaling = np.array([[lu, lu, lu, vu, vu, vu]])
+
         def fun(x):
             # Generate TLE
-            tle = SyntheticTLEGenerator.__variables_to_tle(date, x)
+            tle = SyntheticTLEGenerator._vector_to_tle(date, x)
 
             # Propagate TLE
             states_ = TLEPropagator([tle]).propagate(dates)
 
             # Calculate state error
             delta = states_ - states
+
+            # Scale state error
+            delta /= scaling
 
             # Return vector of errors
             return delta.ravel()
@@ -77,7 +89,7 @@ class SyntheticTLEGenerator:
         sol = scipy.optimize.least_squares(fun, x0, method="lm")
 
         # Create TLE
-        tle = SyntheticTLEGenerator.__variables_to_tle(date, sol.x)
+        tle = SyntheticTLEGenerator._vector_to_tle(date, sol.x)
 
         # Return propagator
         return TLEPropagator([tle])
@@ -126,7 +138,7 @@ class SyntheticTLEGenerator:
         )
 
     @staticmethod
-    def __tle_to_variables(tle: TLE) -> np.ndarray:
+    def _tle_to_vector(tle: TLE) -> np.ndarray:
         # Return variables
         return np.array(
             [
@@ -141,7 +153,7 @@ class SyntheticTLEGenerator:
         )
 
     @staticmethod
-    def __variables_to_tle(date: datetime, var: np.ndarray) -> TLE:
+    def _vector_to_tle(date: datetime, var: np.ndarray) -> TLE:
         # Extract variables
         n, e, i, raan, aop, ma, bstar = var
 
