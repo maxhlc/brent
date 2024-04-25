@@ -67,7 +67,7 @@ class SyntheticTLEGenerator:
         # Calculate scaling units
         lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
         vu = np.sqrt(Constants.DEFAULT_MU / lu)
-        scaling = np.array([[lu, lu, lu, vu, vu, vu]])
+        fscale = np.array([[lu, lu, lu, vu, vu, vu]])
 
         def fun(x):
             # Generate TLE
@@ -80,7 +80,7 @@ class SyntheticTLEGenerator:
             delta = states_ - states
 
             # Scale state error
-            delta /= scaling
+            delta /= fscale
 
             # Return vector of errors
             return delta.ravel()
