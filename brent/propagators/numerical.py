@@ -60,7 +60,10 @@ class NumericalPropagatorParameters:
 class NumericalPropagator(WrappedPropagator):
 
     def __init__(
-        self, date: datetime, state: np.ndarray, model: NumericalPropagatorParameters
+        self,
+        date: datetime,
+        state: np.ndarray,
+        model: NumericalPropagatorParameters,
     ):
         # Create propagator builder
         propagatorBuilder = NumericalPropagator.builder(date, state, model)
@@ -88,7 +91,8 @@ class NumericalPropagator(WrappedPropagator):
 
     @staticmethod
     def __builder(
-        state: TimeStampedPVCoordinates, model: NumericalPropagatorParameters
+        state: TimeStampedPVCoordinates,
+        model: NumericalPropagatorParameters,
     ):
         # Create propagator builder
         propagatorBuilder = NumericalPropagatorBuilder(
@@ -165,7 +169,9 @@ class NumericalPropagator(WrappedPropagator):
 
     @staticmethod
     def builder(
-        date: datetime, state: np.ndarray, model: NumericalPropagatorParameters
+        date: datetime,
+        state: np.ndarray,
+        model: NumericalPropagatorParameters,
     ):
         # Convert date and state to Orekit format
         date_ = datetime_to_absolutedate(date)

@@ -57,7 +57,9 @@ class TLEPropagator(Propagator):
 
     @staticmethod
     def _load(
-        path: str, start: datetime = datetime.min, end: datetime = datetime.max
+        path: str,
+        start: datetime = datetime.min,
+        end: datetime = datetime.max,
     ) -> list[TLE]:
         # Read TLEs
         # TODO: read glob like SP3 loader
@@ -92,7 +94,9 @@ class TLEPropagator(Propagator):
 
     @staticmethod
     def load(
-        path: str, start: datetime = datetime.min, end: datetime = datetime.max
+        path: str,
+        start: datetime = datetime.min,
+        end: datetime = datetime.max,
     ) -> TLEPropagator:
         # Load TLEs
         tles = TLEPropagator._load(path, start, end)

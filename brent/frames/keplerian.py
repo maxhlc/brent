@@ -13,7 +13,10 @@ from brent import Constants
 
 
 def cartesian_to_keplerian(
-    dates, states, mu=Constants.DEFAULT_MU, frame=Constants.DEFAULT_ECI
+    dates,
+    states,
+    mu=Constants.DEFAULT_MU,
+    frame=Constants.DEFAULT_ECI,
 ):
     def _cartesian_to_keplerian(date, state):
         # Convert date and state to Orekit format
@@ -46,7 +49,10 @@ def cartesian_to_keplerian(
 
 
 def keplerian_to_cartesian(
-    dates, states, mu=Constants.DEFAULT_MU, frame=Constants.DEFAULT_ECI
+    dates,
+    states,
+    mu=Constants.DEFAULT_MU,
+    frame=Constants.DEFAULT_ECI,
 ):
     def _keplerian_to_cartesian(date, state):
         # Convert date to Orekit format
@@ -65,7 +71,18 @@ def keplerian_to_cartesian(
 
         # Create Keplerian representation
         # TODO: angle type as input
-        kep = KeplerianOrbit(a, e, i, aop, raan, ma, PositionAngleType.MEAN, frame, dat, mu)
+        kep = KeplerianOrbit(
+            a,
+            e,
+            i,
+            aop,
+            raan,
+            ma,
+            PositionAngleType.MEAN,
+            frame,
+            dat,
+            mu,
+        )
 
         # Extract position and velocity
         pv = kep.getPVCoordinates()
