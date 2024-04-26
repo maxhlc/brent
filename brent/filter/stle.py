@@ -69,6 +69,7 @@ class SyntheticTLEGenerator:
         vu = np.sqrt(Constants.DEFAULT_MU / lu)
         fscale = np.array([[lu, lu, lu, vu, vu, vu]])
 
+        # Define residual function
         def fun(x):
             # Generate TLE
             tle = SyntheticTLEGenerator._vector_to_tle(date, x)
@@ -85,8 +86,48 @@ class SyntheticTLEGenerator:
             # Return vector of errors
             return delta.ravel()
 
+        # Set decision vector scaling
+        xscale = np.array(
+            [
+                2.0,  # n
+                0.001,  # e
+                np.pi,  # i
+                2 * np.pi,  # raan
+                2 * np.pi,  # aop
+                2 * np.pi,  # ma
+                0.0001,  # bstar
+            ]
+        )
+
+        # Set optimisation bounds
+        bounds = (
+            (
+                0.0,  # n
+                0.0,  # e
+                -np.inf,  # i
+                -np.inf,  # raan
+                -np.inf,  # aop
+                -np.inf,  # ma
+                -1e-3,  # bstar
+            ),
+            (
+                np.inf,  # n
+                1.0,  # e
+                np.inf,  # i
+                np.inf,  # raan
+                np.inf,  # aop
+                np.inf,  # ma
+                1e-3,  # bstar
+            ),
+        )
+
         # Execute optimiser
-        sol = scipy.optimize.least_squares(fun, x0, method="lm")
+        sol = scipy.optimize.least_squares(
+            fun,
+            x0,
+            x_scale=xscale,
+            bounds=bounds,
+        )
 
         # Create TLE
         tle = SyntheticTLEGenerator._vector_to_tle(date, sol.x)
@@ -115,7 +156,7 @@ class SyntheticTLEGenerator:
         meanAnomaly: float = 0.0,
         bStar: float = 0.0,
     ) -> TLE:
-        # Return TLE template
+        # Return TLE
         return TLE(
             satelliteNumber,
             classification,
