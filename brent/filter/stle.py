@@ -25,16 +25,21 @@ from brent.propagators import TLEPropagator
 
 class SyntheticTLEGenerator:
 
-    def __init__(self, dates, states):
+    def __init__(self, dates, states: np.ndarray, reference_index: int = -1):
         # Store copies of the dates and states
         self.dates = deepcopy(dates)
         self.states = deepcopy(states)
+        self.reference_index = reference_index
+
+        # Extract reference date and state
+        self.reference_date = dates[reference_index]
+        self.reference_state = states[reference_index, :]
 
         # Convert final date and state to Orekit format
         # TODO: repeated across codebase, move to separate function
-        date_ = datetime_to_absolutedate(dates[-1])
-        pos_ = Vector3D(*states[-1, 0:3].tolist())
-        vel_ = Vector3D(*states[-1, 3:6].tolist())
+        date_ = datetime_to_absolutedate(self.reference_date)
+        pos_ = Vector3D(*self.reference_state[0:3].tolist())
+        vel_ = Vector3D(*self.reference_state[3:6].tolist())
         state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
         orbit = CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
 
@@ -54,7 +59,7 @@ class SyntheticTLEGenerator:
     def estimate(self) -> TLEPropagator:
         # Load dates and states
         dates = self.dates
-        date = dates[-1]
+        reference_date = self.reference_date
         states = self.states
 
         # Load initial guess
@@ -72,7 +77,7 @@ class SyntheticTLEGenerator:
         # Define residual function
         def fun(x):
             # Generate TLE
-            tle = SyntheticTLEGenerator._vector_to_tle(date, x)
+            tle = SyntheticTLEGenerator._vector_to_tle(reference_date, x)
 
             # Propagate TLE
             states_ = TLEPropagator([tle]).propagate(dates)
@@ -130,7 +135,7 @@ class SyntheticTLEGenerator:
         )
 
         # Create TLE
-        tle = SyntheticTLEGenerator._vector_to_tle(date, sol.x)
+        tle = SyntheticTLEGenerator._vector_to_tle(reference_date, sol.x)
 
         # Return propagator
         return TLEPropagator([tle])
