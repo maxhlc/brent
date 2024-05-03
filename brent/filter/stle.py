@@ -25,11 +25,44 @@ from brent.propagators import TLEPropagator
 
 class SyntheticTLEGenerator:
 
-    def __init__(self, dates, states: np.ndarray, reference_index: int = -1):
+    # Decision vector scaling
+    XSCALE = np.array(
+        [
+            2.0,  # n
+            0.001,  # e
+            np.pi,  # i
+            2 * np.pi,  # raan
+            2 * np.pi,  # aop
+            2 * np.pi,  # ma
+            0.0001,  # bstar
+        ]
+    )
+
+    # Decision vector bounds
+    XBOUNDS = [
+        [0.0, np.inf],  # n
+        [0.0, 1.0],  # e
+        [-np.inf, np.inf],  # i
+        [-np.inf, np.inf],  # raan
+        [-np.inf, np.inf],  # aop
+        [-np.inf, np.inf],  # ma
+        [-1e-3, 1e-3],  # bstar
+    ]
+
+    def __init__(
+        self,
+        dates,
+        states: np.ndarray,
+        reference_index: int = -1,
+        estimate_bstar: bool = True,
+    ):
         # Store copies of the dates and states
         self.dates = deepcopy(dates)
         self.states = deepcopy(states)
         self.reference_index = reference_index
+
+        # Store BSTAR flag
+        self.estimate_bstar = estimate_bstar
 
         # Extract reference date and state
         self.reference_date = dates[reference_index]
@@ -54,7 +87,7 @@ class SyntheticTLEGenerator:
         )
 
         # Generate initial guess
-        self.x0 = SyntheticTLEGenerator._tle_to_vector(initialTLE)
+        self.x0 = SyntheticTLEGenerator._tle_to_vector(initialTLE, estimate_bstar)
 
     def estimate(self) -> TLEPropagator:
         # Load dates and states
@@ -91,40 +124,16 @@ class SyntheticTLEGenerator:
             # Return vector of errors
             return delta.ravel()
 
-        # Set decision vector scaling
-        xscale = np.array(
-            [
-                2.0,  # n
-                0.001,  # e
-                np.pi,  # i
-                2 * np.pi,  # raan
-                2 * np.pi,  # aop
-                2 * np.pi,  # ma
-                0.0001,  # bstar
-            ]
-        )
+        # Set decision vector scaling and optimisation bounds
+        if self.estimate_bstar:
+            xscale = SyntheticTLEGenerator.XSCALE
+            bounds = SyntheticTLEGenerator.XBOUNDS
+        else:
+            xscale = SyntheticTLEGenerator.XSCALE[:6]
+            bounds = SyntheticTLEGenerator.XBOUNDS[:6]
 
-        # Set optimisation bounds
-        bounds = (
-            (
-                0.0,  # n
-                0.0,  # e
-                -np.inf,  # i
-                -np.inf,  # raan
-                -np.inf,  # aop
-                -np.inf,  # ma
-                -1e-3,  # bstar
-            ),
-            (
-                np.inf,  # n
-                1.0,  # e
-                np.inf,  # i
-                np.inf,  # raan
-                np.inf,  # aop
-                np.inf,  # ma
-                1e-3,  # bstar
-            ),
-        )
+        # Reorganise bounds to expected format
+        bounds = list(zip(*bounds))
 
         # Execute optimiser
         sol = scipy.optimize.least_squares(
@@ -184,24 +193,34 @@ class SyntheticTLEGenerator:
         )
 
     @staticmethod
-    def _tle_to_vector(tle: TLE) -> np.ndarray:
+    def _tle_to_vector(tle: TLE, bstar: bool) -> np.ndarray:
+        # Extract elements
+        elements = [
+            tle.getMeanMotion(),
+            tle.getE(),
+            tle.getI(),
+            tle.getRaan(),
+            tle.getPerigeeArgument(),
+            tle.getMeanAnomaly(),
+        ]
+
+        # Add BSTAR (if estimated)
+        if bstar:
+            elements.append(tle.getBStar())
+
         # Return variables
-        return np.array(
-            [
-                tle.getMeanMotion(),
-                tle.getE(),
-                tle.getI(),
-                tle.getRaan(),
-                tle.getPerigeeArgument(),
-                tle.getMeanAnomaly(),
-                tle.getBStar(),
-            ]
-        )
+        return np.array(elements)
 
     @staticmethod
-    def _vector_to_tle(date: datetime, var: np.ndarray) -> TLE:
+    def _vector_to_tle(date: datetime, elements: np.ndarray) -> TLE:
         # Extract variables
-        n, e, i, raan, aop, ma, bstar = var
+        if len(elements) == 7:
+            n, e, i, raan, aop, ma, bstar = elements
+        elif len(elements) == 6:
+            n, e, i, raan, aop, ma = elements
+            bstar = 0.0
+        else:
+            raise ValueError("Incompatible elements vector length")
 
         # Cast variables to correct datatype
         n = float(n)

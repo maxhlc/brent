@@ -23,6 +23,7 @@ def tle_to_stle(
     states: np.ndarray,
     epoch: datetime,
     duration: float,
+    bstar: bool,
 ) -> TLE:
     # Determine forward/backward fit
     if duration > 0:
@@ -40,7 +41,12 @@ def tle_to_stle(
     states_ = states[idx, :]
 
     # Generate S-TLE
-    filter = brent.filter.SyntheticTLEGenerator(dates_, states_, reference_index)
+    filter = brent.filter.SyntheticTLEGenerator(
+        dates_,
+        states_,
+        reference_index,
+        bstar,
+    )
     fit = filter.estimate()
 
     # Extract S-TLE
@@ -52,8 +58,8 @@ def tle_to_stle(
 
 def tle_stle_delta(tle: TLE, stle: TLE) -> np.ndarray:
     # Convert (S-)TLEs to vector
-    tle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(tle)
-    stle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(stle)
+    tle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(tle, True)
+    stle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(stle, True)
 
     # Calculate difference
     delta = stle_ - tle_
@@ -71,9 +77,12 @@ def tles_to_stles(
     states: np.ndarray,
     epochs: List[datetime],
     duration: float,
+    bstar: bool,
 ) -> List[TLE]:
     # Return S-TLEs
-    return [tle_to_stle(dates, states, epoch, duration) for epoch in tqdm(epochs)]
+    return [
+        tle_to_stle(dates, states, epoch, duration, bstar) for epoch in tqdm(epochs)
+    ]
 
 
 def plot_delta(epochs: List[datetime], delta: np.ndarray) -> None:
@@ -134,6 +143,7 @@ def main(
     tlepath: str,
     stlename: str,
     duration: float,
+    bstar: bool,
 ) -> None:
     # Import SP3
     sp3 = brent.propagators.SP3Propagator.load(sp3path, sp3id)
@@ -159,7 +169,7 @@ def main(
     statesSP3 = sp3.propagate(dates)
 
     # Generate S-TLEs
-    stles = tles_to_stles(dates, statesSP3, epochs, duration)
+    stles = tles_to_stles(dates, statesSP3, epochs, duration, bstar)
 
     # Calculate TLE differences
     delta = np.array([tle_stle_delta(tle, stle) for tle, stle in zip(tles, stles)])
@@ -236,6 +246,7 @@ if __name__ == "__main__":
         "tlepath": "./data/tle/19751.json",
         "stlename": "Etalon 1 (SYNTHETIC)",
         "duration": 14,
+        "bstar": True,
     }
 
     # Execute main function
