@@ -16,13 +16,14 @@ from org.orekit.propagation.analytical.tle import TLE
 
 # Internal imports
 import brent
-from brent.propagators import Propagator
 
 
-def tle_to_stle(tle: TLE, duration: float, propagator: Propagator) -> TLE:
-    # Extract epoch
-    epoch = absolutedate_to_datetime(tle.getDate())
-
+def tle_to_stle(
+    dates: np.ndarray,
+    states: np.ndarray,
+    epoch: datetime,
+    duration: float,
+) -> TLE:
     # Determine forward/backward fit
     if duration > 0:
         start = epoch
@@ -33,14 +34,13 @@ def tle_to_stle(tle: TLE, duration: float, propagator: Propagator) -> TLE:
         end = epoch
         reference_index = -1
 
-    # Generate observation dates
-    dates = pd.date_range(start, end, periods=100)
-
-    # Generate observations
-    states = propagator.propagate(dates)
+    # Extract observations
+    idx = np.logical_and(dates >= start, dates <= end)
+    dates_ = dates[idx]
+    states_ = states[idx, :]
 
     # Generate S-TLE
-    filter = brent.filter.SyntheticTLEGenerator(dates, states, reference_index)
+    filter = brent.filter.SyntheticTLEGenerator(dates_, states_, reference_index)
     fit = filter.estimate()
 
     # Extract S-TLE
@@ -67,12 +67,13 @@ def tle_stle_delta(tle: TLE, stle: TLE) -> np.ndarray:
 
 
 def tles_to_stles(
-    tles: List[TLE],
+    dates: np.ndarray,
+    states: np.ndarray,
+    epochs: List[datetime],
     duration: float,
-    propagator: Propagator,
 ) -> List[TLE]:
     # Return S-TLEs
-    return [tle_to_stle(tle, duration, propagator) for tle in tqdm(tles)]
+    return [tle_to_stle(dates, states, epoch, duration) for epoch in tqdm(epochs)]
 
 
 def plot_delta(epochs: List[datetime], delta: np.ndarray) -> None:
@@ -127,30 +128,38 @@ def save(
         json.dump(records, fid, indent=4)
 
 
-def main():
-    # Set parameters
-    parameters = {
-        "sp3path": "./data/sp3/etalon1/*.sp3",
-        "sp3id": "L53",
-        "tlepath": "./data/tle/19751.json",
-        "stlename": "Etalon 1 (SYNTHETIC)",
-        "duration": 14,
-    }
-
+def main(
+    sp3path: str,
+    sp3id: str,
+    tlepath: str,
+    stlename: str,
+    duration: float,
+) -> None:
     # Import SP3
-    sp3 = brent.propagators.SP3Propagator.load(
-        path=parameters["sp3path"],
-        id=parameters["sp3id"],
-    )
+    sp3 = brent.propagators.SP3Propagator.load(sp3path, sp3id)
 
     # Import actual TLEs
-    tles = brent.propagators.TLEPropagator._load(parameters["tlepath"])
+    tles = brent.propagators.TLEPropagator._load(tlepath)
 
     # Extract epochs
     epochs = [absolutedate_to_datetime(tle.getDate()) for tle in tles]
 
+    # Set dates
+    dates = pd.date_range(
+        datetime(2022, 1, 1),
+        datetime(2023, 1, 1),
+        freq="120min",
+    ).to_pydatetime()
+
+    # Insert TLE epochs into dates
+    dates = np.append(dates, np.array(epochs))
+    dates.sort()
+
+    # Propagate SP3 states
+    statesSP3 = sp3.propagate(dates)
+
     # Generate S-TLEs
-    stles = tles_to_stles(tles, parameters["duration"], sp3)
+    stles = tles_to_stles(dates, statesSP3, epochs, duration)
 
     # Calculate TLE differences
     delta = np.array([tle_stle_delta(tle, stle) for tle, stle in zip(tles, stles)])
@@ -159,11 +168,7 @@ def main():
     tlePropagator = brent.propagators.TLEPropagator(tles)
     stlePropagator = brent.propagators.TLEPropagator(stles)
 
-    # Set comparison dates
-    dates = pd.date_range(datetime(2022, 1, 1), datetime(2023, 1, 1), freq="0.1D")
-
-    # Propagate states
-    statesSP3 = sp3.propagate(dates)
+    # Propagate (S-)TLE states
     statesTLE = tlePropagator.propagate(dates)
     statesSTLE = stlePropagator.propagate(dates)
 
@@ -184,7 +189,7 @@ def main():
 
     # Save S-TLEs
     fname = f"./output/{datetime.now().strftime('%Y%m%d_%H%M%S')}_stles.json"
-    save(fname, stles, object_name=parameters["stlename"])
+    save(fname, stles, object_name=stlename)
 
     # Plot along-track angular errors
     plt.figure()
@@ -224,4 +229,14 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Set parameters
+    parameters = {
+        "sp3path": "./data/sp3/etalon1/*.sp3",
+        "sp3id": "L53",
+        "tlepath": "./data/tle/19751.json",
+        "stlename": "Etalon 1 (SYNTHETIC)",
+        "duration": 14,
+    }
+
+    # Execute main function
+    main(**parameters)
