@@ -3,6 +3,7 @@ conda-forge::timeout-decorator
 matplotlib
 numpy
 pandas
+requests
 scipy
 seaborn
 tqdm
