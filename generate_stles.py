@@ -1,7 +1,7 @@
 # Standard imports
 from datetime import datetime, timedelta
 import json
-from typing import List
+from typing import List, Dict
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -115,6 +115,7 @@ def save(
     tles: List[TLE],
     object_name: str = "SYNTHETIC",
     object_id: str = "0000-000A",
+    extra: Dict[str, str | float | int | bool] = {},
 ) -> None:
     # Get current datetime
     now = datetime.now()
@@ -128,6 +129,7 @@ def save(
             "CREATION_DATE": now.isoformat(),
             "TLE_LINE1": tle.getLine1(),
             "TLE_LINE2": tle.getLine2(),
+            "BRENT_EXTRA": extra,
         }
         for tle in tles
     ]
@@ -171,6 +173,18 @@ def main(
     # Generate S-TLEs
     stles = tles_to_stles(dates, statesSP3, epochs, duration, bstar)
 
+    # Save S-TLEs
+    fname = f"./output/{datetime.now().strftime('%Y%m%d_%H%M%S')}_stles"
+    save(
+        fname + ".json",
+        stles,
+        object_name=stlename,
+        extra={
+            "DURATION": duration,
+            "BSTAR": bstar,
+        },
+    )
+
     # Calculate TLE differences
     delta = np.array([tle_stle_delta(tle, stle) for tle, stle in zip(tles, stles)])
 
@@ -196,10 +210,6 @@ def main(
     # Calculate RTN errors
     deltaStatesTLERTN = np.einsum("ijk,ik -> ij", RTN, deltaStatesTLE)
     deltaStatesSTLERTN = np.einsum("ijk,ik -> ij", RTN, deltaStatesSTLE)
-
-    # Save S-TLEs
-    fname = f"./output/{datetime.now().strftime('%Y%m%d_%H%M%S')}_stles.json"
-    save(fname, stles, object_name=stlename)
 
     # Plot along-track angular errors
     plt.figure()
