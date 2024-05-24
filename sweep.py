@@ -93,7 +93,9 @@ def fit(spacecraft, parameters):
 
     # Load TLEs
     tlePropagator = brent.propagators.TLEPropagator.load(
-        spacecraft["tle"], np.min(dates), np.max(dates)
+        spacecraft["tle"],
+        np.min(dates),
+        np.max(dates),
     )
 
     # Generate psuedo-observation states
@@ -104,12 +106,16 @@ def fit(spacecraft, parameters):
 
     # Declare propagator builder
     builder = brent.propagators.NumericalPropagator.builder(
-        dates[0], sampleStates[0, :], model
+        dates[0],
+        sampleStates[0, :],
+        model,
     )
 
     # Generate observations
     observations = brent.filter.generate_observations(
-        dates, sampleStates, covarianceProvider
+        dates,
+        sampleStates,
+        covarianceProvider,
     )
 
     # Create filter
@@ -197,7 +203,8 @@ def main(spacecraft, arguments):
     # Load SP3 propagators
     for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
         ispacecraft["sp3propagator"] = brent.propagators.SP3Propagator.load(
-            ispacecraft["sp3"], ispacecraft["sp3name"]
+            ispacecraft["sp3"],
+            ispacecraft["sp3name"],
         )
 
     # Generate parameter permutations
@@ -217,6 +224,7 @@ def main(spacecraft, arguments):
     df = pd.DataFrame(fits)
 
     # Save results
+    # TODO: use different format than Pickle
     now = datetime.now(timezone.utc)
     fname = "./output/" + now.strftime("%Y%m%d_%H%M%S") + ".pkl"
     df.to_pickle(fname)
