@@ -1,4 +1,5 @@
 # Standard imports
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import json
 from typing import List, Dict
@@ -16,6 +17,26 @@ from org.orekit.propagation.analytical.tle import TLE
 
 # Internal imports
 import brent
+
+
+@dataclass
+class Parameters:
+    # SP3 parameters
+    sp3path: str
+    sp3id: str
+
+    # TLE parameters
+    tlepath: str
+
+    # Fit parameters
+    duration: float
+    bstar: bool
+
+    # Metadata
+    stlename: str
+
+    # Output
+    outputpath: str
 
 
 def generate_dates(
@@ -159,41 +180,40 @@ def save(
         json.dump(records, fid, indent=4)
 
 
-def main(
-    sp3path: str,
-    sp3id: str,
-    tlepath: str,
-    stlename: str,
-    duration: float,
-    bstar: bool,
-) -> None:
+def main(parameters: Parameters) -> None:
     # Import SP3
-    sp3 = brent.propagators.SP3Propagator.load(sp3path, sp3id)
+    sp3 = brent.propagators.SP3Propagator.load(parameters.sp3path, parameters.sp3id)
 
     # Import actual TLEs
-    tles = brent.propagators.TLEPropagator._load(tlepath)
+    tles = brent.propagators.TLEPropagator._load(parameters.tlepath)
 
     # Extract epochs
     epochs = [absolutedate_to_datetime(tle.getDate()) for tle in tles]
 
     # Generate dates
-    dates = generate_dates(epochs, duration)
+    dates = generate_dates(epochs, parameters.duration)
 
     # Propagate SP3 states
     statesSP3 = sp3.propagate(dates)
 
     # Generate S-TLEs
-    stles = tles_to_stles(dates, statesSP3, epochs, duration, bstar)
+    stles = tles_to_stles(
+        dates,
+        statesSP3,
+        epochs,
+        parameters.duration,
+        parameters.bstar,
+    )
 
     # Save S-TLEs
     fname = f"./output/{datetime.now().strftime('%Y%m%d_%H%M%S')}_stles"
     save(
         fname + ".json",
         stles,
-        object_name=stlename,
+        object_name=parameters.stlename,
         extra={
-            "DURATION": duration,
-            "BSTAR": bstar,
+            "DURATION": parameters.duration,
+            "BSTAR": parameters.bstar,
         },
     )
 
@@ -262,14 +282,17 @@ def main(
 
 if __name__ == "__main__":
     # Set parameters
-    parameters = {
-        "sp3path": "./data/sp3/etalon1/*.sp3",
-        "sp3id": "L53",
-        "tlepath": "./data/tle/19751.json",
-        "stlename": "Etalon 1 (SYNTHETIC)",
-        "duration": 14,
-        "bstar": True,
-    }
+    parameters = Parameters(
+        **{
+            "sp3path": "./data/sp3/etalon2/*.sp3",
+            "sp3id": "L54",
+            "tlepath": "./data/tle/20026.json",
+            "stlename": "Etalon 2 (SYNTHETIC)",
+            "duration": 3,
+            "bstar": False,
+            "outputpath": "./output/stle/",
+        }
+    )
 
     # Execute main function
-    main(**parameters)
+    main(parameters)
