@@ -1,7 +1,6 @@
 # Ignore all data
 *
 
-# Except .gitignore and input example
+# Except .gitignore and input examples
 !.gitignore
-!input.json.example
 !sweep.json.example
