@@ -18,6 +18,26 @@ from org.orekit.propagation.analytical.tle import TLE
 import brent
 
 
+def generate_dates(
+    epochs: List[datetime],
+    duration: float,
+    freq: str = "120min",
+) -> np.ndarray:
+    # Set start and end dates
+    start = epochs[0]
+    end = epochs[-1] + timedelta(duration)
+
+    # Generate dates
+    dates = pd.date_range(start, end, freq=freq).to_pydatetime()
+
+    # Insert TLE epochs into dates
+    dates = np.append(dates, np.array(epochs))
+    dates.sort()
+
+    # Return dates
+    return dates
+
+
 def tle_to_stle(
     dates: np.ndarray,
     states: np.ndarray,
@@ -156,16 +176,8 @@ def main(
     # Extract epochs
     epochs = [absolutedate_to_datetime(tle.getDate()) for tle in tles]
 
-    # Set dates
-    dates = pd.date_range(
-        datetime(2022, 1, 1),
-        datetime(2023, 1, 1),
-        freq="120min",
-    ).to_pydatetime()
-
-    # Insert TLE epochs into dates
-    dates = np.append(dates, np.array(epochs))
-    dates.sort()
+    # Generate dates
+    dates = generate_dates(epochs, duration)
 
     # Propagate SP3 states
     statesSP3 = sp3.propagate(dates)
