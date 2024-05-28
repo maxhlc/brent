@@ -113,13 +113,13 @@ def tle_to_stle(
     return stle
 
 
-def tle_stle_delta(tle: TLE, stle: TLE) -> np.ndarray:
-    # Convert (S-)TLEs to vector
-    tle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(tle, True)
-    stle_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(stle, True)
+def tle_delta(tle1: TLE, tle2: TLE) -> np.ndarray:
+    # Convert TLEs to vectors
+    tle1_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(tle1, True)
+    tle2_ = brent.filter.SyntheticTLEGenerator._tle_to_vector(tle2, True)
 
     # Calculate difference
-    delta = stle_ - tle_
+    delta = tle2_ - tle1_
 
     # Add argument of latitude differences
     u = delta[4] + delta[5]
@@ -254,7 +254,7 @@ def main(parameters: Parameters) -> None:
     save(parameters, tles, stles)
 
     # Calculate TLE differences
-    delta = np.array([tle_stle_delta(tle, stle) for tle, stle in zip(tles, stles)])
+    delta = np.array([tle_delta(tle, stle) for tle, stle in zip(tles, stles)])
 
     # Create (S-)TLE propagators
     tlePropagator = brent.propagators.TLEPropagator(tles)
