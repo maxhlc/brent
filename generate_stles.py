@@ -1,7 +1,12 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
-from dataclasses import dataclass
+from argparse import ArgumentParser
+from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 import json
+import os.path
 from typing import List, Dict
 
 # Third-party imports
@@ -37,6 +42,17 @@ class Parameters:
 
     # Output
     outputpath: str
+
+    @staticmethod
+    def load(fname: str) -> Parameters:
+        # Load parameters from file
+        with open(fname, "r") as fid:
+            return Parameters(**json.load(fid))
+
+    def save(self, fname: str) -> None:
+        # Save parameters to file
+        with open(fname, "w") as fid:
+            json.dump(asdict(self), fid, indent=4)
 
 
 def generate_dates(
@@ -151,12 +167,11 @@ def plot_delta(epochs: List[datetime], delta: np.ndarray) -> None:
         axes[idx].set_ylabel(yaxlabel[idx])
 
 
-def save(
+def save_stles(
     path: str,
     tles: List[TLE],
     object_name: str = "SYNTHETIC",
     object_id: str = "0000-000A",
-    extra: Dict[str, str | float | int | bool] = {},
 ) -> None:
     # Get current datetime
     now = datetime.now()
@@ -170,7 +185,6 @@ def save(
             "CREATION_DATE": now.isoformat(),
             "TLE_LINE1": tle.getLine1(),
             "TLE_LINE2": tle.getLine2(),
-            "BRENT_EXTRA": extra,
         }
         for tle in tles
     ]
@@ -178,6 +192,37 @@ def save(
     # Save to file
     with open(path, "w") as fid:
         json.dump(records, fid, indent=4)
+
+
+def save(parameters: Parameters, tles: List[TLE], stles: List[TLE]):
+    # Ensure directory exists
+    os.makedirs(os.path.abspath(parameters.outputpath), exist_ok=True)
+
+    # Generate filepaths
+    date_string = datetime.now().strftime("%Y%m%d_%H%M%S")
+    fname_parameters = os.path.join(
+        parameters.outputpath,
+        f"{date_string}_parameters.json",
+    )
+    fname_tles = os.path.join(
+        parameters.outputpath,
+        f"{date_string}_tles.json",
+    )
+    fname_stles = os.path.join(
+        parameters.outputpath,
+        f"{date_string}_stles.json",
+    )
+
+    # Save parameters
+    parameters.save(fname_parameters)
+
+    # Save copy of TLEs
+    # TODO: store in memory, instead of file copy after sweep?
+    with open(parameters.tlepath, "rb") as fin, open(fname_tles, "wb") as fout:
+        fout.write(fin.read())
+
+    # Save S-TLEs
+    save_stles(fname_stles, stles, object_name=parameters.stlename)
 
 
 def main(parameters: Parameters) -> None:
@@ -205,17 +250,8 @@ def main(parameters: Parameters) -> None:
         parameters.bstar,
     )
 
-    # Save S-TLEs
-    fname = f"./output/{datetime.now().strftime('%Y%m%d_%H%M%S')}_stles"
-    save(
-        fname + ".json",
-        stles,
-        object_name=parameters.stlename,
-        extra={
-            "DURATION": parameters.duration,
-            "BSTAR": parameters.bstar,
-        },
-    )
+    # Save results
+    save(parameters, tles, stles)
 
     # Calculate TLE differences
     delta = np.array([tle_stle_delta(tle, stle) for tle, stle in zip(tles, stles)])
@@ -281,18 +317,13 @@ def main(parameters: Parameters) -> None:
 
 
 if __name__ == "__main__":
-    # Set parameters
-    parameters = Parameters(
-        **{
-            "sp3path": "./data/sp3/etalon2/*.sp3",
-            "sp3id": "L54",
-            "tlepath": "./data/tle/20026.json",
-            "stlename": "Etalon 2 (SYNTHETIC)",
-            "duration": 3,
-            "bstar": False,
-            "outputpath": "./output/stle/",
-        }
-    )
+    # Parse input
+    parser = ArgumentParser()
+    parser.add_argument("--input", type=str, default="./input/stle.json")
+    parser_args = parser.parse_args()
+
+    # Load parameters
+    parameters = Parameters.load(parser_args.input)
 
     # Execute main function
     main(parameters)
