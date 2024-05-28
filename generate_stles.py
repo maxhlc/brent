@@ -60,9 +60,13 @@ def generate_dates(
     duration: float,
     freq: str = "120min",
 ) -> np.ndarray:
-    # Set start and end dates
-    start = epochs[0]
-    end = epochs[-1] + timedelta(duration)
+    # Determine forward/backward fit and set dates
+    if duration > 0:
+        start = epochs[0]
+        end = epochs[-1] + timedelta(duration)
+    else:
+        start = epochs[0] + timedelta(duration)
+        end = epochs[-1]
 
     # Generate dates
     dates = pd.date_range(start, end, freq=freq).to_pydatetime()
@@ -75,7 +79,7 @@ def generate_dates(
     return dates
 
 
-def tle_to_stle(
+def states_to_stle(
     dates: np.ndarray,
     states: np.ndarray,
     epoch: datetime,
@@ -88,7 +92,7 @@ def tle_to_stle(
         end = epoch + timedelta(duration)
         reference_index = 0
     else:
-        start = epoch - timedelta(duration)
+        start = epoch + timedelta(duration)
         end = epoch
         reference_index = -1
 
@@ -138,7 +142,7 @@ def tles_to_stles(
 ) -> List[TLE]:
     # Return S-TLEs
     return [
-        tle_to_stle(dates, states, epoch, duration, bstar) for epoch in tqdm(epochs)
+        states_to_stle(dates, states, epoch, duration, bstar) for epoch in tqdm(epochs)
     ]
 
 
