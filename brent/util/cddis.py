@@ -25,7 +25,7 @@ class CDDISDownloader:
     def download(self, url: str, filepath: str, timeout: float = 10) -> None:
         # Request file (repeated for authentication)
         # Solution from: https://urs.earthdata.nasa.gov/documentation/for_users/data_access/python (accessed 2024-05-23)
-        response_ = self.session.request("get", url)
+        response_ = self.session.request("get", url, timeout=timeout)
         response = self.session.get(response_.url, timeout=timeout)
 
         # Raise any errors

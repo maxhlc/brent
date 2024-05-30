@@ -3,5 +3,6 @@
 
 # Except .gitignore and input examples
 !.gitignore
+!download.json.example
 !stle.json.example
 !sweep.json.example

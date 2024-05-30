@@ -1,0 +1,14 @@
+{
+    "username": "<CDDIS username>",
+    "password": "<CDDIS password>",
+    "filename_template": "$provider.orb.$name.$date.v70.sp3.gz",
+    "url_root_template": "https://cddis.nasa.gov/archive/slr/products/orbits/$name/$date/",
+    "providers": [
+        "esa"
+    ],
+    "name": "lageos1",
+    "start": "2018-01-06",
+    "end": "2024-05-11",
+    "frequency": 7,
+    "output_path": "./download/lageos1/"
+}
