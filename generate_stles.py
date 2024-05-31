@@ -125,9 +125,23 @@ def tle_delta(tle1: TLE, tle2: TLE) -> np.ndarray:
     # Calculate difference
     delta = tle2_ - tle1_
 
-    # Add argument of latitude differences
-    u = delta[4] + delta[5]
-    delta = np.append(delta, u)
+    # Calculate difference in argument of latitude
+    # NOTE: this definiton uses mean anomaly, instead of
+    #       the common definition with true anomaly
+    du = delta[4] + delta[5]
+
+    # Append argument of latitude difference to deltas
+    delta = np.append(delta, du)
+
+    # Wrap angles
+    idx = [
+        2,  # Inclination
+        3,  # Right ascension of the ascending node
+        4,  # Argument of periapsis
+        5,  # Mean anomaly
+        7,  # Arugment of latitude
+    ]
+    delta[idx] = np.arctan2(np.sin(delta[idx]), np.cos(delta[idx]))
 
     # Return difference
     return delta
