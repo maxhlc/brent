@@ -6,6 +6,7 @@ from glob import glob
 
 # Orekit imports
 import orekit
+from orekit.pyhelpers import absolutedate_to_datetime
 from org.orekit.data import DataSource
 from org.orekit.files.sp3 import SP3, SP3Parser
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
@@ -25,41 +26,37 @@ class SP3Propagator(WrappedPropagator):
         # Create SP3 parser
         sp3parser = SP3Parser()
 
-        # Declare list for SP3 files
-        sp3list = java.util.ArrayList()
-
-        # Iterate through paths
-        for path in paths:
-            # Open file
-            sp3file = DataSource(path)
-
-            # Parse SP3 data
-            sp3data = sp3parser.parse(sp3file)
-
-            # Add SP3 data to list
-            sp3list.add(sp3data)
-
-        # Splice SP3 files together
-        sp3 = SP3.splice(sp3list)
-
-        # TODO: fix SP3Ephemeris.getPropagator() not available through Orekit wrapper
+        # Generate list of SP3s
+        sp3list = [sp3parser.parse(DataSource(path)) for path in paths]
 
         # Declare list for SP3 propagators
-        sp3propagators = java.util.ArrayList()
+        sp3propagators = []
 
-        # Extract SP3 segments
-        segments = sp3.getEphemeris(id).getSegments()
+        # Iterate through SP3 data
+        for sp3 in sp3list:
+            # Extract segments
+            segments = sp3.getEphemeris(id).getSegments()
 
-        # Extract number of segments
-        nsegments = segments.size()
+            # Extract number of segments
+            ns = segments.size()
 
-        # Iterate through segments
-        for idx in range(nsegments):
-            # Extract propagator
-            sp3propagators.add(segments.get(idx).getPropagator())
+            # Iterate through segments
+            for idx in range(ns):
+                # Extract propagator
+                propagator = segments.get(idx).getPropagator()
+
+                # Add to propagator list
+                sp3propagators.append(propagator)
+
+        # Sort propagators by ascending starting date
+        sp3propagators.sort(key=lambda x: absolutedate_to_datetime(x.getMinDate()))
+
+        # Declare Java list for SP3 propagators
+        sp3propagators_ = java.util.ArrayList()
+        [sp3propagators_.add(sp3propagator) for sp3propagator in sp3propagators]
 
         # Create aggregate propagator
-        sp3aggregated = AggregateBoundedPropagator(sp3propagators)
+        sp3aggregated = AggregateBoundedPropagator(sp3propagators_)
 
         # Return propagator
         return SP3Propagator(sp3aggregated)
