@@ -77,7 +77,7 @@ class SyntheticTLEGenerator:
         orbit = CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
 
         # Create template TLE
-        templateTLE = SyntheticTLEGenerator.__generate_tle(date=dates[-1])
+        templateTLE = SyntheticTLEGenerator.__generate_tle(date=self.reference_date)
 
         # Generate initial TLE
         initialTLE = TLE.stateToTLE(
@@ -93,14 +93,15 @@ class SyntheticTLEGenerator:
         # Load dates and states
         dates = self.dates
         reference_date = self.reference_date
+        reference_index = self.reference_index
         states = self.states
 
         # Load initial guess
         x0 = self.x0
 
         # Calculate position and velocity magnitudes
-        r0 = np.linalg.norm(states[-1, 0:3])
-        v0 = np.linalg.norm(states[-1, 3:6])
+        r0 = np.linalg.norm(states[reference_index, 0:3])
+        v0 = np.linalg.norm(states[reference_index, 3:6])
 
         # Calculate scaling units
         lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
