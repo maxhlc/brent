@@ -9,19 +9,19 @@ from typing import Dict, Any
 import orekit
 from orekit.pyhelpers import absolutedate_to_datetime
 from org.orekit.data import DataSource
-from org.orekit.files.sp3 import SP3, SP3Parser
+from org.orekit.files.sp3 import SP3Parser
 from org.orekit.propagation.analytical import AggregateBoundedPropagator
 import java.util
 
 # Internal imports
 from .propagator import WrappedPropagator
-from brent.bias import BiasModel, deserialise_bias
-from brent.noise import CovarianceProvider, deserialise_noise
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 
 
 class SP3Propagator(WrappedPropagator):
     # Set metadata
-    type: str = "sp3"
+    type: str = "SP3"
 
     # Declare path and identifier
     path: str
@@ -82,7 +82,7 @@ class SP3Propagator(WrappedPropagator):
         # Return propagator
         return sp3propagator
 
-    def serialise_parameters(self) -> Dict[str, Any]:
+    def _serialise_parameters(self) -> Dict[str, Any]:
         # Return serialised parameters
         return {
             "path": self.path,
@@ -90,11 +90,11 @@ class SP3Propagator(WrappedPropagator):
         }
 
     @staticmethod
-    def deserialise(struct: Dict[str, Any]) -> SP3Propagator:
-        # Deserialise bias and noise
-        bias = deserialise_bias(struct["bias"])
-        noise = deserialise_noise(struct["noise"])
-
+    def _deserialise(
+        bias: BiasModel,
+        noise: CovarianceProvider,
+        struct: Dict[str, Any],
+    ) -> SP3Propagator:
         # Deserialise initial date and state
         path = struct["parameters"]["path"]
         id = struct["parameters"]["id"]

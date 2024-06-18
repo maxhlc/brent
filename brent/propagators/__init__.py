@@ -9,9 +9,9 @@ from .tle import TLEPropagator
 
 # Declare propagator mapping
 PROPAGATOR_TYPES: Dict[str, Type[Propagator]] = {
-    "numerical": NumericalPropagator,
-    "tle": TLEPropagator,
-    "sp3": SP3Propagator,
+    "Numerical": NumericalPropagator,
+    "TLE": TLEPropagator,
+    "SP3": SP3Propagator,
 }
 
 
@@ -32,4 +32,4 @@ def deserialise_propagator(struct: Dict[str, Any]) -> Propagator:
     propagatorType = get_propagator_type(struct["type"])
 
     # Return deserialised propagator
-    return propagatorType.deserialise(struct)
+    return propagatorType.deserialise(propagatorType, struct)

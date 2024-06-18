@@ -19,14 +19,14 @@ from org.orekit.propagation.analytical.tle import (
 
 # Internal imports
 from brent import Constants
-from brent.bias import BiasModel, deserialise_bias
-from brent.noise import CovarianceProvider, deserialise_noise
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 from .propagator import Propagator, WrappedPropagator
 
 
 class TLEPropagator(Propagator):
     # Set metadata
-    type: str = "tle"
+    type: str = "TLE"
 
     def __init__(
         self,
@@ -130,7 +130,7 @@ class TLEPropagator(Propagator):
         # Return TLE propagator
         return tlePropagator
 
-    def serialise_parameters(self) -> Dict[str, Any]:
+    def _serialise_parameters(self) -> Dict[str, Any]:
         # TODO: dump TLEs to temporary file
         if self.path == "":
             raise ValueError("Unable to serialise TLEPropagator without path")
@@ -143,13 +143,13 @@ class TLEPropagator(Propagator):
         }
 
     @staticmethod
-    def deserialise(struct: Dict[str, Any]) -> TLEPropagator:
-        # Deserialise bias and noise
-        bias = deserialise_bias(struct["bias"])
-        noise = deserialise_noise(struct["noise"])
-
+    def _deserialise(
+        bias: BiasModel,
+        noise: CovarianceProvider,
+        struct: Dict[str, Any],
+    ) -> TLEPropagator:
         # Deserialise parameters
-        # TODO: move to separate method
+        # TODO: move to separate method?
         path = struct["parameters"]["path"]
         start = datetime.fromisoformat(struct["parameters"]["start"])
         end = datetime.fromisoformat(struct["parameters"]["end"])

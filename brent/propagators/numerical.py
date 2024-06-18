@@ -35,8 +35,8 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 # Internal imports
 from .propagator import WrappedPropagator
 from brent import Constants
-from brent.bias import BiasModel, deserialise_bias
-from brent.noise import CovarianceProvider, deserialise_noise
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 
 # Default parameters
 DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)
@@ -74,7 +74,7 @@ class NumericalPropagatorParameters:
 
 class NumericalPropagator(WrappedPropagator):
     # Set metadata
-    type: str = "numerical"
+    type: str = "Numerical"
 
     def __init__(
         self,
@@ -206,7 +206,7 @@ class NumericalPropagator(WrappedPropagator):
         # Return default propagator builder
         return NumericalPropagator.__builder(state_, model)
 
-    def serialise_parameters(self) -> Dict[str, Any]:
+    def _serialise_parameters(self) -> Dict[str, Any]:
         # Return serialised parameters
         return {
             "date": self.date.isoformat(),
@@ -215,11 +215,11 @@ class NumericalPropagator(WrappedPropagator):
         }
 
     @staticmethod
-    def deserialise(struct: Dict[str, Any]) -> NumericalPropagator:
-        # Deserialise bias and noise
-        bias = deserialise_bias(struct["bias"])
-        noise = deserialise_noise(struct["noise"])
-
+    def deserialise(
+        bias: BiasModel,
+        noise: CovarianceProvider,
+        struct: Dict[str, Any],
+    ) -> NumericalPropagator:
         # Deserialise initial date and state
         date = datetime.fromisoformat(struct["parameters"]["date"])
         state = np.array(struct["parameters"]["state"])

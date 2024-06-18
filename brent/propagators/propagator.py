@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Type
 
 # Third-party imports
 import numpy as np
@@ -14,8 +14,8 @@ from orekit.pyhelpers import datetime_to_absolutedate
 
 # Internal imports
 from brent import Constants
-from brent.bias import BiasModel
-from brent.noise import CovarianceProvider
+from brent.bias import BiasModel, deserialise_bias
+from brent.noise import CovarianceProvider, deserialise_noise
 
 
 class Propagator(ABC):
@@ -41,27 +41,41 @@ class Propagator(ABC):
         return unbiased
 
     @abstractmethod
-    def serialise_parameters(self) -> Dict[str, Any]: ...
+    def _serialise_parameters(self) -> Dict[str, Any]: ...
 
     def serialise(self) -> Dict[str, Any]:
         # Return serialised object
         return {
             "type": self.type,
-            "parameters": self.serialise_parameters(),
+            "parameters": self._serialise_parameters(),
             "bias": self.bias.serialise(),
             "noise": self.noise.serialise(),
         }
 
     @staticmethod
     @abstractmethod
-    def deserialise(struct: Dict[str, Any]) -> Propagator: ...
+    def _deserialise(
+        bias: BiasModel,
+        noise: CovarianceProvider,
+        struct: Dict[str, Any],
+    ) -> Propagator: ...
 
-    # TODO: find way to better centralise deserialisation
+    @staticmethod
+    def deserialise(
+        propagatorType: Type[Propagator],
+        struct: Dict[str, Any],
+    ) -> Propagator:
+        # Deserialise bias and noise
+        bias = deserialise_bias(struct["bias"])
+        noise = deserialise_noise(struct["noise"])
+
+        # Return deserialised propagator
+        return propagatorType._deserialise(bias, noise, struct)
 
 
 class WrappedPropagator(Propagator):
     # Set metadata
-    type: str = "wrapped"
+    type: str = "Wrapped"
 
     def __init__(
         self,
@@ -92,9 +106,13 @@ class WrappedPropagator(Propagator):
         # Return state vector
         return state
 
-    def serialise_parameters(self) -> Tuple[str, Dict[str, Any]]:
+    def _serialise_parameters(self) -> Tuple[str, Dict[str, Any]]:
         raise ValueError("Unable to serialise WrappedPropagator")
 
     @staticmethod
-    def deserialise(struct: Dict[str, Any]) -> WrappedPropagator:
+    def _deserialise(
+        bias: BiasModel,
+        noise: CovarianceProvider,
+        struct: Dict[str, Any],
+    ) -> WrappedPropagator:
         raise ValueError("Unable to deserialise WrappedPropagator")
