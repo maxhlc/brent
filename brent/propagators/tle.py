@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from datetime import datetime
+from typing import Dict, Any
 
 # Third-party imports
 import numpy as np
@@ -22,6 +23,10 @@ from .propagator import Propagator, WrappedPropagator
 
 
 class TLEPropagator(Propagator):
+    # Declare TLE path and start/end dates
+    path: str = ""
+    start: datetime = datetime.min
+    end: datetime = datetime.max
 
     def __init__(self, tle: list[TLE]):
         # TODO: allow input of single TLE
@@ -101,5 +106,41 @@ class TLEPropagator(Propagator):
         # Load TLEs
         tles = TLEPropagator._load(path, start, end)
 
+        # Create propagator
+        tlePropagator = TLEPropagator(tles)
+
+        # Assign path and start/end dates
+        tlePropagator.path = path
+        tlePropagator.start = start
+        tlePropagator.end = end
+
         # Return TLE propagator
-        return TLEPropagator(tles)
+        return tlePropagator
+
+    def serialise(self) -> Dict[str, Any]:
+        # TODO: dump TLEs to temporary file
+        if self.path == "":
+            raise ValueError("Unable to serialise TLEPropagator without path")
+
+        # Return serialised propagator
+        return {
+            "type": "tle",
+            "parameters": {
+                "path": self.path,
+                "start": self.start.isoformat(),
+                "end": self.end.isoformat(),
+            },
+        }
+
+    @staticmethod
+    def deserialise(struct: Dict[str, Any]) -> TLEPropagator:
+        # Assert type matches
+        assert struct["type"] == "tle"
+
+        # Extract path and identifier
+        path = str(struct["parameters"]["path"])
+        start = datetime.fromisoformat(struct["parameters"]["start"])
+        end = datetime.fromisoformat(struct["parameters"]["end"])
+
+        # Return TLE propagator
+        return TLEPropagator.load(path, start, end)

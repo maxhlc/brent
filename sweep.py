@@ -78,9 +78,9 @@ def fit(spacecraft, parameters):
     # Extract sample noise model
     noise = parameters["noise"]
     if noise["frame"] == "rtn":
-        covarianceProvider = brent.filter.RTNCovarianceProvider(np.array(noise["std"]))
+        covarianceProvider = brent.noise.RTNCovarianceProvider(np.array(noise["std"]))
     else:
-        covarianceProvider = brent.filter.CovarianceProvider()
+        covarianceProvider = brent.noise.CovarianceProvider()
 
     # Extract sample and test dates
     # TODO: set sampling technique, testing duration

@@ -17,5 +17,6 @@ from . import bias
 from . import filter
 from . import frames
 from . import io
+from . import noise
 from . import propagators
 from . import util

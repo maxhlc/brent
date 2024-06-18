@@ -1,6 +1,10 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Dict, Any
 
 # Third-party imports
 import numpy as np
@@ -24,6 +28,22 @@ class BiasModel:
 
         # Return debiased states
         return states_debiased
+
+    def serialise(self):
+        # Return serialised model
+        return {
+            "type": "none",
+            "parameters": {},
+        }
+
+    @staticmethod
+    def deserialise(struct: Dict[str, Any]) -> BiasModel:
+        # Assert type and parameters match
+        assert struct["type"] == "none"
+        assert struct["parameters"] == {}
+
+        # Return bias model
+        return BiasModel()
 
 
 @dataclass
@@ -62,3 +82,29 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
 
         # Return biases
         return bias
+
+    def serialise(self):
+        # Return serialised model
+        return {
+            "type": "simplifiedalongtracksinusoidal",
+            "parameters": {
+                "amplitude": self.amplitude,
+                "frequency": self.frequency,
+                "phase": self.phase,
+                "offset": self.offset,
+            },
+        }
+
+    @staticmethod
+    def deserialise(struct) -> SimplifiedAlongtrackSinusoidal:
+        # Assert type matches
+        assert struct["type"] == "simplifiedalongtracksinusoidal"
+
+        # Extract model parameters
+        amplitude = struct["parameters"]["amplitude"]
+        frequency = struct["parameters"]["frequency"]
+        phase = struct["parameters"]["phase"]
+        offset = struct["parameters"]["offset"]
+
+        # Return bias model
+        return SimplifiedAlongtrackSinusoidal(amplitude, frequency, phase, offset)

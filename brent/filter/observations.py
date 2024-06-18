@@ -9,7 +9,7 @@ from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
-from .covariance import CovarianceProvider
+from brent.noise import CovarianceProvider
 
 
 def generate_observations(dates, states, covarianceProvider=CovarianceProvider()):
