@@ -6,8 +6,7 @@ from .models import BiasModel, SimplifiedAlongtrackSinusoidal
 
 # Declare bias mapping
 BIAS_TYPES: Dict[str, Type[BiasModel]] = {
-    "none": BiasModel,
-    "simplifiedalongtracksinusoidal": SimplifiedAlongtrackSinusoidal,
+    type.type: type for type in [BiasModel, SimplifiedAlongtrackSinusoidal]
 }
 
 
@@ -17,7 +16,7 @@ def get_bias_type(name: str) -> Type[BiasModel]:
 
     # Raise error for unknown bias type
     if biasType is None:
-        raise ValueError(f"Unknown bias type: {biasType}")
+        raise ValueError(f"Unknown bias type: {name}")
 
     # Return bias type
     return biasType

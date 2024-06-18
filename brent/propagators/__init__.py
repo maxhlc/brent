@@ -9,9 +9,7 @@ from .tle import TLEPropagator
 
 # Declare propagator mapping
 PROPAGATOR_TYPES: Dict[str, Type[Propagator]] = {
-    "Numerical": NumericalPropagator,
-    "TLE": TLEPropagator,
-    "SP3": SP3Propagator,
+    type.type: type for type in [NumericalPropagator, TLEPropagator, SP3Propagator]
 }
 
 
@@ -21,7 +19,7 @@ def get_propagator_type(name: str) -> Type[Propagator]:
 
     # Raise error for unknown propagator type
     if propagatorType is None:
-        raise ValueError(f"Unknown propagator type: {propagatorType}")
+        raise ValueError(f"Unknown propagator type: {name}")
 
     # Return propagator type
     return propagatorType

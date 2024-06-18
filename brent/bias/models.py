@@ -14,6 +14,8 @@ import brent.frames
 
 
 class BiasModel:
+    # Set metadata
+    type: str = "None"
 
     def biases(self, dates, states):
         # Return zero biases
@@ -32,14 +34,14 @@ class BiasModel:
     def serialise(self):
         # Return serialised model
         return {
-            "type": "none",
+            "type": self.type,
             "parameters": {},
         }
 
     @staticmethod
     def deserialise(struct: Dict[str, Any]) -> BiasModel:
         # Assert type and parameters match
-        assert struct["type"] == "none"
+        assert struct["type"] == BiasModel.type
         assert struct["parameters"] == {}
 
         # Return bias model
@@ -53,6 +55,9 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
     frequency: float
     phase: float
     offset: float
+
+    # Set metadata
+    type: str = "SimplifiedAlongtrackSinusoidal"
 
     def __model(self, t: np.ndarray):
         # Calculate model period
@@ -86,7 +91,7 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
     def serialise(self):
         # Return serialised model
         return {
-            "type": "simplifiedalongtracksinusoidal",
+            "type": self.type,
             "parameters": {
                 "amplitude": self.amplitude,
                 "frequency": self.frequency,
@@ -98,7 +103,7 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
     @staticmethod
     def deserialise(struct) -> SimplifiedAlongtrackSinusoidal:
         # Assert type matches
-        assert struct["type"] == "simplifiedalongtracksinusoidal"
+        assert struct["type"] == SimplifiedAlongtrackSinusoidal.type
 
         # Extract model parameters
         amplitude = struct["parameters"]["amplitude"]

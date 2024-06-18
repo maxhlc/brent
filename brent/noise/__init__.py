@@ -6,8 +6,7 @@ from .models import CovarianceProvider, RTNCovarianceProvider
 
 # Declare noise mapping
 NOISE_TYPES: Dict[str, Type[CovarianceProvider]] = {
-    "none": CovarianceProvider,
-    "rtn": RTNCovarianceProvider,
+    type.type: type for type in [CovarianceProvider, RTNCovarianceProvider]
 }
 
 
@@ -17,7 +16,7 @@ def get_noise_type(name: str) -> Type[CovarianceProvider]:
 
     # Raise error for unknown noise type
     if noiseType is None:
-        raise ValueError(f"Unknown noise type: {noiseType}")
+        raise ValueError(f"Unknown noise type: {name}")
 
     # Return noise type
     return noiseType

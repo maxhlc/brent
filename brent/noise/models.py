@@ -12,6 +12,9 @@ import brent.frames
 
 
 class CovarianceProvider:
+    # Set metadata
+    type: str = "None"
+
     def __init__(self):
         pass
 
@@ -22,14 +25,14 @@ class CovarianceProvider:
     def serialise(self):
         # Return serialised model
         return {
-            "type": "none",
+            "type": self.type,
             "parameters": {},
         }
 
     @staticmethod
     def deserialise(struct: Dict[str, Any]) -> CovarianceProvider:
         # Assert type and parameters match
-        assert struct["type"] == "none"
+        assert struct["type"] == CovarianceProvider.type
         assert struct["parameters"] == {}
 
         # Return covariance model
@@ -37,6 +40,9 @@ class CovarianceProvider:
 
 
 class RTNCovarianceProvider(CovarianceProvider):
+    # Set metadata
+    type: str = "RTN"
+
     def __init__(self, sigma: np.ndarray):
         # Assert shape
         assert sigma.shape == (6,)
@@ -60,7 +66,7 @@ class RTNCovarianceProvider(CovarianceProvider):
     def serialise(self):
         # Return serialised model
         return {
-            "type": "rtn",
+            "type": self.type,
             "parameters": {
                 "std": self.sigma.tolist(),
             },
@@ -69,7 +75,7 @@ class RTNCovarianceProvider(CovarianceProvider):
     @staticmethod
     def deserialise(struct: Dict[str, Any]) -> RTNCovarianceProvider:
         # Assert type matches
-        assert struct["type"] == "rtn"
+        assert struct["type"] == RTNCovarianceProvider.type
 
         # Extract standard deviations
         sigma = np.array(struct["parameters"]["std"])
