@@ -19,7 +19,6 @@ class Fit:
         self,
         dates: FitDates,
         observer: Propagator,
-        fit: FitPropagatorBuilder,
         validator: Propagator,
         filter: FitFilter,
     ):
@@ -28,7 +27,6 @@ class Fit:
 
         # Store propagators
         self.observer = observer
-        self.fit = fit
         self.validator = validator
 
         # Store filter
@@ -40,7 +38,6 @@ class Fit:
             "dates": self.dates.serialise(),
             "propagators": {
                 "observer": self.observer.serialise(),
-                "fit": self.fit.serialise(),
                 "validator": self.validator.serialise(),
             },
             "filter": self.filter.serialise(),
@@ -53,14 +50,13 @@ class Fit:
 
         # Deserialise propagators
         observer = deserialise_propagator(struct["propagators"]["observer"])
-        fit = FitPropagatorBuilder.deserialise(struct["propagators"]["fit"])
         validator = deserialise_propagator(struct["propagators"]["validator"])
 
         # Deserialise filter
         filter = FitFilter.deserialise(struct["filter"])
 
         # Return deserialised
-        return Fit(dates, observer, fit, validator, filter)
+        return Fit(dates, observer, validator, filter)
 
     @staticmethod
     def load(fname: str) -> Fit:
@@ -111,16 +107,6 @@ class FitDates:
 
         # Return fit dates
         return FitDates(start, end, nsamples)
-
-
-class FitPropagatorBuilder:
-
-    def serialise(self):
-        pass
-
-    @staticmethod
-    def deserialise(struct) -> FitPropagatorBuilder:
-        return FitPropagatorBuilder()
 
 
 class FitFilter:

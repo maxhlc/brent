@@ -1,2 +1,2 @@
 # Internal imports
-from .fit import Fit, FitDates, FitPropagatorBuilder
+from .fit import Fit, FitDates
