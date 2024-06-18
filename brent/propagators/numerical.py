@@ -1,6 +1,10 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
+from typing import Any, Dict
 
 # Third-party imports
 import numpy as np
@@ -31,8 +35,8 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 # Internal imports
 from .propagator import WrappedPropagator
 from brent import Constants
-from brent.bias import BiasModel
-from brent.noise import CovarianceProvider
+from brent.bias import BiasModel, deserialise_bias
+from brent.noise import CovarianceProvider, deserialise_noise
 
 # Default parameters
 DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)
@@ -58,8 +62,19 @@ class NumericalPropagatorParameters:
     srp: bool
     srp_estimate: bool
 
+    def serialise(self) -> Dict[str, Any]:
+        # Return serialised object
+        return asdict(self)
+
+    @staticmethod
+    def deserialise(struct: Dict[str, Any]) -> NumericalPropagatorParameters:
+        # Return deserialised object
+        return NumericalPropagatorParameters(**struct)
+
 
 class NumericalPropagator(WrappedPropagator):
+    # Set metadata
+    type: str = "numerical"
 
     def __init__(
         self,
@@ -69,6 +84,11 @@ class NumericalPropagator(WrappedPropagator):
         bias: BiasModel = BiasModel(),
         noise: CovarianceProvider = CovarianceProvider(),
     ):
+        # Store parameters
+        self.date = date
+        self.state = state
+        self.model = model
+
         # Create propagator builder
         propagatorBuilder = NumericalPropagator.builder(date, state, model)
 
@@ -185,3 +205,27 @@ class NumericalPropagator(WrappedPropagator):
 
         # Return default propagator builder
         return NumericalPropagator.__builder(state_, model)
+
+    def serialise_parameters(self) -> Dict[str, Any]:
+        # Return serialised parameters
+        return {
+            "date": self.date.isoformat(),
+            "state": self.state.tolist(),
+            "model": self.model.serialise(),
+        }
+
+    @staticmethod
+    def deserialise(struct: Dict[str, Any]) -> NumericalPropagator:
+        # Deserialise bias and noise
+        bias = deserialise_bias(struct["bias"])
+        noise = deserialise_noise(struct["noise"])
+
+        # Deserialise initial date and state
+        date = datetime.fromisoformat(struct["parameters"]["date"])
+        state = np.array(struct["parameters"]["state"])
+
+        # Deserialise model
+        model = NumericalPropagatorParameters.deserialise(struct["parameters"]["model"])
+
+        # Return deserialised model
+        return NumericalPropagator(date, state, model, bias, noise)

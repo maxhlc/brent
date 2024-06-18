@@ -1,5 +1,5 @@
 # Standard imports
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 # Internal imports
 from .models import BiasModel, SimplifiedAlongtrackSinusoidal
@@ -21,3 +21,11 @@ def get_bias_type(name: str) -> Type[BiasModel]:
 
     # Return bias type
     return biasType
+
+
+def deserialise_bias(struct: Dict[str, Any]) -> BiasModel:
+    # Extract bias type
+    biasType = get_bias_type(struct["type"])
+
+    # Return deserialised bias
+    return biasType.deserialise(struct)

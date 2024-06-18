@@ -15,11 +15,14 @@ import java.util
 
 # Internal imports
 from .propagator import WrappedPropagator
-from brent.bias import BiasModel
-from brent.noise import CovarianceProvider
+from brent.bias import BiasModel, deserialise_bias
+from brent.noise import CovarianceProvider, deserialise_noise
 
 
 class SP3Propagator(WrappedPropagator):
+    # Set metadata
+    type: str = "sp3"
+
     # Declare path and identifier
     path: str
     id: str
@@ -79,24 +82,22 @@ class SP3Propagator(WrappedPropagator):
         # Return propagator
         return sp3propagator
 
-    def serialise(self) -> Dict[str, Any]:
-        # Return serialised propagator
+    def serialise_parameters(self) -> Dict[str, Any]:
+        # Return serialised parameters
         return {
-            "type": "sp3",
-            "parameters": {
-                "path": self.path,
-                "id": self.id,
-            },
+            "path": self.path,
+            "id": self.id,
         }
 
     @staticmethod
     def deserialise(struct: Dict[str, Any]) -> SP3Propagator:
-        # Assert type matches
-        assert struct["type"] == "sp3"
+        # Deserialise bias and noise
+        bias = deserialise_bias(struct["bias"])
+        noise = deserialise_noise(struct["noise"])
 
-        # Extract path and identifier
+        # Deserialise initial date and state
         path = struct["parameters"]["path"]
         id = struct["parameters"]["id"]
 
-        # Return SP3 propagator
-        return SP3Propagator.load(path, id)
+        # Return deserialised model
+        return SP3Propagator.load(path, id, bias, noise)

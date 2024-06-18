@@ -1,5 +1,5 @@
 # Standard imports
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 # Internal imports
 from .models import CovarianceProvider, RTNCovarianceProvider
@@ -21,3 +21,11 @@ def get_noise_type(name: str) -> Type[CovarianceProvider]:
 
     # Return noise type
     return noiseType
+
+
+def deserialise_noise(struct: Dict[str, Any]) -> CovarianceProvider:
+    # Extract noise type
+    noiseType = get_noise_type(struct["type"])
+
+    # Return deserialised noise
+    return noiseType.deserialise(struct)

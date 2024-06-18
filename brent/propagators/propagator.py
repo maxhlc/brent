@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Dict, Tuple
 
 # Third-party imports
 import numpy as np
@@ -19,6 +19,8 @@ from brent.noise import CovarianceProvider
 
 
 class Propagator(ABC):
+    # Metadata
+    type: str
 
     def __init__(self, bias: BiasModel, noise: CovarianceProvider) -> None:
         # Store bias and noise models
@@ -39,14 +41,27 @@ class Propagator(ABC):
         return unbiased
 
     @abstractmethod
-    def serialise(self) -> Dict[str, Any]: ...
+    def serialise_parameters(self) -> Dict[str, Any]: ...
+
+    def serialise(self) -> Dict[str, Any]:
+        # Return serialised object
+        return {
+            "type": self.type,
+            "parameters": self.serialise_parameters(),
+            "bias": self.bias.serialise(),
+            "noise": self.noise.serialise(),
+        }
 
     @staticmethod
     @abstractmethod
-    def deserialise(struct) -> Propagator: ...
+    def deserialise(struct: Dict[str, Any]) -> Propagator: ...
+
+    # TODO: find way to better centralise deserialisation
 
 
 class WrappedPropagator(Propagator):
+    # Set metadata
+    type: str = "wrapped"
 
     def __init__(
         self,
@@ -77,9 +92,9 @@ class WrappedPropagator(Propagator):
         # Return state vector
         return state
 
-    def serialise(self) -> Dict[str, Any]:
+    def serialise_parameters(self) -> Tuple[str, Dict[str, Any]]:
         raise ValueError("Unable to serialise WrappedPropagator")
 
     @staticmethod
-    def deserialise(struct) -> WrappedPropagator:
+    def deserialise(struct: Dict[str, Any]) -> WrappedPropagator:
         raise ValueError("Unable to deserialise WrappedPropagator")

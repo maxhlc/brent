@@ -4,16 +4,13 @@ from __future__ import annotations
 # Standard imports
 from datetime import datetime
 import json
-from typing import Dict, Any, Type
+from typing import Any, Dict
 
 # Third-party imports
 import pandas as pd
 
 # Internal imports
-from brent import Constants
-from brent.bias import BiasModel, get_bias_type
-from brent.noise import CovarianceProvider, get_noise_type
-from brent.propagators import Propagator, WrappedPropagator, get_propagator_type
+from brent.propagators import Propagator, deserialise_propagator
 
 
 class Fit:
@@ -21,9 +18,9 @@ class Fit:
     def __init__(
         self,
         dates: FitDates,
-        observer: FitPropagator,
+        observer: Propagator,
         fit: FitPropagatorBuilder,
-        validator: FitPropagator,
+        validator: Propagator,
         filter: FitFilter,
     ):
         # Store dates
@@ -55,9 +52,9 @@ class Fit:
         dates = FitDates.deserialise(struct["dates"])
 
         # Deserialise propagators
-        observer = FitPropagator.deserialise(struct["propagators"]["observer"])
+        observer = deserialise_propagator(struct["propagators"]["observer"])
         fit = FitPropagatorBuilder.deserialise(struct["propagators"]["fit"])
-        validator = FitPropagator.deserialise(struct["propagators"]["validator"])
+        validator = deserialise_propagator(struct["propagators"]["validator"])
 
         # Deserialise filter
         filter = FitFilter.deserialise(struct["filter"])
@@ -80,7 +77,7 @@ class Fit:
 
         # Save to file
         with open(fname, "w") as fp:
-            json.dump(struct, fp)
+            json.dump(struct, fp, indent=4)
 
 
 class FitDates:
@@ -114,66 +111,6 @@ class FitDates:
 
         # Return fit dates
         return FitDates(start, end, nsamples)
-
-
-class FitPropagator(WrappedPropagator):
-
-    def __init__(
-        self,
-        propagator: Propagator,
-        noise: CovarianceProvider,
-        bias: BiasModel,
-    ):
-        # Store parameters
-        self.propagator = propagator
-        self.noise = noise
-        self.bias = bias
-
-        # Initialise underlying propagator
-        super().__init__(propagator)
-
-    def propagate(self, dates, frame=Constants.DEFAULT_ECI):
-        # Propagate biased state
-        biased = self.propagator.propagate(dates, frame)
-
-        # Calculate bias correction
-        if self.bias == None:
-            states = biased
-        else:
-            states = self.bias.debias(dates, biased)
-
-        # Return states
-        return states
-
-    def serialise(self) -> Dict[str, Any]:
-        # TODO: add results
-        return {
-            "propagator": self.propagator.serialise(),
-            "noise": self.noise.serialise(),
-            "bias": self.bias.serialise(),
-        }
-
-    @staticmethod
-    def deserialise(struct: Dict[str, Any]) -> FitPropagator:
-        # Extract structs
-        propagator_ = struct.get("propagator", None)
-        noise_ = struct.get("noise", None)
-        bias_ = struct.get("bias", None)
-
-        # Build noise model
-        noiseType = get_noise_type(noise_["type"])
-        noise = noiseType.deserialise(noise_)
-
-        # Build bias model
-        biasType = get_bias_type(bias_["type"])
-        bias = biasType.deserialise(bias_)
-
-        # Build propagator model
-        propagatorType = get_propagator_type(propagator_["type"])
-        propagator = propagatorType.deserialise(propagator_)
-
-        # Return overall model
-        return FitPropagator(propagator, noise, bias)
 
 
 class FitPropagatorBuilder:

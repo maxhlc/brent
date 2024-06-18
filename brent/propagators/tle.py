@@ -19,22 +19,23 @@ from org.orekit.propagation.analytical.tle import (
 
 # Internal imports
 from brent import Constants
-from brent.bias import BiasModel
-from brent.noise import CovarianceProvider
+from brent.bias import BiasModel, deserialise_bias
+from brent.noise import CovarianceProvider, deserialise_noise
 from .propagator import Propagator, WrappedPropagator
 
 
 class TLEPropagator(Propagator):
-    # Declare TLE path and start/end dates
-    path: str = ""
-    start: datetime = datetime.min
-    end: datetime = datetime.max
+    # Set metadata
+    type: str = "tle"
 
     def __init__(
         self,
         tle: list[TLE],
         bias: BiasModel = BiasModel(),
         noise: CovarianceProvider = CovarianceProvider(),
+        path: str = "",
+        start: datetime = datetime.min,
+        end: datetime = datetime.max,
     ):
         # TODO: allow input of single TLE
 
@@ -54,6 +55,11 @@ class TLEPropagator(Propagator):
 
         # Initialise parent
         super().__init__(bias, noise)
+
+        # Store metadata
+        self.path = path
+        self.start = start
+        self.end = end
 
     def _propagate(self, date, frame=Constants.DEFAULT_ECI):
         # Select propagator
@@ -112,45 +118,41 @@ class TLEPropagator(Propagator):
         path: str,
         start: datetime = datetime.min,
         end: datetime = datetime.max,
+        bias: BiasModel = BiasModel(),
+        noise: CovarianceProvider = CovarianceProvider(),
     ) -> TLEPropagator:
         # Load TLEs
         tles = TLEPropagator._load(path, start, end)
 
         # Create propagator
-        tlePropagator = TLEPropagator(tles)
-
-        # Assign path and start/end dates
-        tlePropagator.path = path
-        tlePropagator.start = start
-        tlePropagator.end = end
+        tlePropagator = TLEPropagator(tles, bias, noise, path, start, end)
 
         # Return TLE propagator
         return tlePropagator
 
-    def serialise(self) -> Dict[str, Any]:
+    def serialise_parameters(self) -> Dict[str, Any]:
         # TODO: dump TLEs to temporary file
         if self.path == "":
             raise ValueError("Unable to serialise TLEPropagator without path")
 
         # Return serialised propagator
         return {
-            "type": "tle",
-            "parameters": {
-                "path": self.path,
-                "start": self.start.isoformat(),
-                "end": self.end.isoformat(),
-            },
+            "path": self.path,
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
         }
 
     @staticmethod
     def deserialise(struct: Dict[str, Any]) -> TLEPropagator:
-        # Assert type matches
-        assert struct["type"] == "tle"
+        # Deserialise bias and noise
+        bias = deserialise_bias(struct["bias"])
+        noise = deserialise_noise(struct["noise"])
 
-        # Extract path and identifier
-        path = str(struct["parameters"]["path"])
+        # Deserialise parameters
+        # TODO: move to separate method
+        path = struct["parameters"]["path"]
         start = datetime.fromisoformat(struct["parameters"]["start"])
         end = datetime.fromisoformat(struct["parameters"]["end"])
 
-        # Return TLE propagator
-        return TLEPropagator.load(path, start, end)
+        # Return deserialised model
+        return TLEPropagator.load(path, start, end, bias, noise)
