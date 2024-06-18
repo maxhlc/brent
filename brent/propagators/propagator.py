@@ -14,16 +14,29 @@ from orekit.pyhelpers import datetime_to_absolutedate
 
 # Internal imports
 from brent import Constants
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 
 
 class Propagator(ABC):
+
+    def __init__(self, bias: BiasModel, noise: CovarianceProvider) -> None:
+        # Store bias and noise models
+        self.bias = bias
+        self.noise = noise
 
     @abstractmethod
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray: ...
 
     def propagate(self, dates, frame=Constants.DEFAULT_ECI) -> np.ndarray:
-        # Return states array
-        return np.array([self._propagate(date, frame) for date in dates])
+        # Propagate biased states
+        biased = np.array([self._propagate(date, frame) for date in dates])
+
+        # Calculate unbiased state
+        unbiased = self.bias.debias(dates, biased)
+
+        # Return unbiased states array
+        return unbiased
 
     @abstractmethod
     def serialise(self) -> Dict[str, Any]: ...
@@ -35,9 +48,17 @@ class Propagator(ABC):
 
 class WrappedPropagator(Propagator):
 
-    def __init__(self, propagator):
+    def __init__(
+        self,
+        propagator,
+        bias: BiasModel = BiasModel(),
+        noise: CovarianceProvider = CovarianceProvider(),
+    ):
         # Store propagator
         self.propagator = propagator
+
+        # Initialise parent
+        super().__init__(bias, noise)
 
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
         # Convert date to Orekit format

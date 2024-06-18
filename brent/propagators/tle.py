@@ -19,6 +19,8 @@ from org.orekit.propagation.analytical.tle import (
 
 # Internal imports
 from brent import Constants
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 from .propagator import Propagator, WrappedPropagator
 
 
@@ -28,7 +30,12 @@ class TLEPropagator(Propagator):
     start: datetime = datetime.min
     end: datetime = datetime.max
 
-    def __init__(self, tle: list[TLE]):
+    def __init__(
+        self,
+        tle: list[TLE],
+        bias: BiasModel = BiasModel(),
+        noise: CovarianceProvider = CovarianceProvider(),
+    ):
         # TODO: allow input of single TLE
 
         # Check for number of TLEs
@@ -38,12 +45,15 @@ class TLEPropagator(Propagator):
         # Store epochs and propagators
         epochs = [absolutedate_to_datetime(itle.getDate()) for itle in tle]
         propagators = [
-            WrappedPropagator(OrekitTLEPropagator.selectExtrapolator(itle))
+            WrappedPropagator(OrekitTLEPropagator.selectExtrapolator(itle), bias, noise)
             for itle in tle
         ]
 
         # Store sorted epoch/propagator pairs
         self.propagators = sorted(zip(epochs, propagators), key=lambda x: x[0])
+
+        # Initialise parent
+        super().__init__(bias, noise)
 
     def _propagate(self, date, frame=Constants.DEFAULT_ECI):
         # Select propagator

@@ -15,6 +15,8 @@ import java.util
 
 # Internal imports
 from .propagator import WrappedPropagator
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 
 
 class SP3Propagator(WrappedPropagator):
@@ -23,7 +25,12 @@ class SP3Propagator(WrappedPropagator):
     id: str
 
     @staticmethod
-    def load(path: str, id: str) -> SP3Propagator:
+    def load(
+        path: str,
+        id: str,
+        bias: BiasModel = BiasModel(),
+        noise: CovarianceProvider = CovarianceProvider(),
+    ) -> SP3Propagator:
         # Create glob of paths
         paths = glob(path)
 
@@ -63,7 +70,7 @@ class SP3Propagator(WrappedPropagator):
         sp3aggregated = AggregateBoundedPropagator(sp3propagators_)
 
         # Create propagator
-        sp3propagator = SP3Propagator(sp3aggregated)
+        sp3propagator = SP3Propagator(sp3aggregated, bias, noise)
 
         # Assign path and ID
         sp3propagator.path = path

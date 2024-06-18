@@ -31,6 +31,8 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 # Internal imports
 from .propagator import WrappedPropagator
 from brent import Constants
+from brent.bias import BiasModel
+from brent.noise import CovarianceProvider
 
 # Default parameters
 DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)
@@ -64,6 +66,8 @@ class NumericalPropagator(WrappedPropagator):
         date: datetime,
         state: np.ndarray,
         model: NumericalPropagatorParameters,
+        bias: BiasModel = BiasModel(),
+        noise: CovarianceProvider = CovarianceProvider(),
     ):
         # Create propagator builder
         propagatorBuilder = NumericalPropagator.builder(date, state, model)
@@ -87,7 +91,7 @@ class NumericalPropagator(WrappedPropagator):
         propagator.setInitialState(spacecraftState)
 
         # Initialise wrapped propagator
-        super().__init__(propagator)
+        super().__init__(propagator, bias, noise)
 
     @staticmethod
     def __builder(
