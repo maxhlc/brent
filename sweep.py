@@ -2,6 +2,8 @@
 from argparse import ArgumentParser
 from datetime import datetime, timedelta, timezone
 import json
+import os
+import uuid
 
 # Third-party imports
 import numpy as np
@@ -223,11 +225,39 @@ def main(spacecraft, arguments):
     # Create DataFrame of results
     df = pd.DataFrame(fits)
 
+    # Set output directory, and ensure it exists
+    directory = "./output/"
+    os.makedirs(os.path.abspath(directory), exist_ok=True)
+
     # Save results
     # TODO: use different format than Pickle
-    now = datetime.now(timezone.utc)
-    fname = "./output/" + now.strftime("%Y%m%d_%H%M%S") + ".pkl"
-    df.to_pickle(fname)
+    ia_max = 3
+    for ia in range(ia_max + 1):
+        # Set suffix (used if retry limit exceeded)
+        if ia == ia_max:
+            # Print warning message
+            print("Reverting to UUID mode")
+
+            # Generate suffix
+            suffix = uuid.uuid4().hex
+        else:
+            # Set blank suffix
+            suffix = ""
+
+        # Generate file name
+        now = datetime.now(timezone.utc)
+        fname = directory + now.strftime("%Y%m%d_%H%M%S_%f") + suffix + ".pkl"
+
+        try:
+            # Try to save the results
+            with open(fname, "xb") as fp:
+                df.to_pickle(fp)
+
+            # Break retry loop
+            break
+        except:
+            # Print error message
+            print(f"Error saving file at: {fname} (Attempt {ia + 1}/{ia_max})")
 
 
 if __name__ == "__main__":
