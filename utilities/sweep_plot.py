@@ -1,6 +1,5 @@
 # Standard imports
 from argparse import ArgumentParser
-from datetime import datetime
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -24,13 +23,20 @@ duration_to_days = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
 
 
 def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
+    # Calculate limits
+    # TODO: cleaner implementation
+    xlim = (
+        np.min(df["start"]),
+        np.max(df["start"]),
+    )
+
     # Iterate through objects
     for object in np.unique(df["name"]):
         # Extract corresponding sub-table for object
         df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
-        x = df_object["fitEpoch"].to_numpy()
+        x = df_object["start"].to_numpy()
         y = duration_to_days(df_object["duration"])
         z = df_object["fitErrorRMS"].to_numpy()
 
@@ -73,11 +79,11 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.contourf(x[idx], y[idx], z[idx])
 
         # Set limits
-        # TODO: dynamic
-        plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
+        # TODO: y- and z-axes
+        plt.xlim(xlim)
 
         # Set axis labels
-        plt.xlabel("Fit Epoch [-]")
+        plt.xlabel("Fit Window Start [-]")
         plt.ylabel("Fit Window Size [days]")
 
         # Add colour bar
@@ -100,13 +106,20 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
 
 
 def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
+    # Calculate limits
+    # TODO: cleaner implementation
+    xlim = (
+        np.min(df["start"]),
+        np.max(df["start"]),
+    )
+
     # Iterate through objects
     for object in np.unique(df["name"]):
         # Extract corresponding sub-table for object
         df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
-        x = df_object["fitEpoch"].to_numpy()
+        x = df_object["start"].to_numpy()
         y = df_object["samples"].to_numpy()
         z = df_object["fitErrorRMS"].to_numpy()
 
@@ -149,11 +162,11 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.contourf(x[idx], y[idx], z[idx])
 
         # Set limits
-        # TODO: dynamic
-        plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
+        # TODO: y- and z-axes
+        plt.xlim(xlim)
 
         # Set axis labels
-        plt.xlabel("Fit Epoch [-]")
+        plt.xlabel("Fit Window Start [-]")
         plt.ylabel("Sample Size [-]")
 
         # Add colour bar
@@ -188,6 +201,13 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             df_ = df[idx].copy()
             df_ = df_[["testDaysPostFitEpoch", "name", "errorDiffBetter"]]
 
+            # Calculate limits
+            # TODO: cleaner implementation
+            xlim = (
+                np.min(df_["testDaysPostFitEpoch"].explode(["testDaysPostFitEpoch"])),
+                np.max(df_["testDaysPostFitEpoch"].explode(["testDaysPostFitEpoch"])),
+            )
+
             # Expand data frame
             df_ = (
                 df_.explode(["testDaysPostFitEpoch", "errorDiffBetter"])
@@ -203,7 +223,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
                 data=df_,
                 x="testDaysPostFitEpoch",
                 y="errorDiffBetter",
-                hue="name"
+                hue="name",
             )
 
             # Set axis labels
@@ -214,8 +234,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             plt.legend(title="Object")
 
             # Set axis limits
-            # TODO: dynamic x limits
-            plt.xlim((-10, 30))
+            plt.xlim(xlim)
             plt.ylim((0.0, 1.0))
 
             # Plot reference lines
@@ -236,6 +255,13 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
 
 
 def plot_errors(df: pd.DataFrame, fname: str) -> None:
+    # Calculate limits
+    # TODO: cleaner implementation
+    xlim = (
+        np.min(df["start"]),
+        np.max(df["start"]),
+    )
+
     # Iterate through windows
     for window in np.unique(df["duration"]):
         # Iterate through samples
@@ -250,18 +276,18 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             fig, ax = plt.subplots(figsize=FIGSIZE)
 
             # Plot position RMSEs
-            sns.lineplot(data=df_, x="fitEpoch", y="fitErrorRMS", hue="name")
+            sns.lineplot(data=df_, x="start", y="fitErrorRMS", hue="name")
 
             # Set axis labels
-            plt.xlabel("Fit Epoch [-]")
+            plt.xlabel("Fit Window Start [-]")
             plt.ylabel("Position RMSE [m]")
 
             # Update legend title
             plt.legend(title="Object")
 
             # Set limits
-            # TODO: dynamic
-            plt.xlim((datetime(2022, 2, 1), datetime(2022, 11, 1)))
+            # TODO: y-axis
+            plt.xlim(xlim)
             plt.ylim((0, 10e3))
 
             # Format dates
