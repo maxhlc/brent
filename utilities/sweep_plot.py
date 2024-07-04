@@ -272,6 +272,9 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             # Extract subtable
             df_ = df[df["duration"] == window].copy()
 
+            # Sort subtable by object name
+            df_ = df_.sort_values("name")
+
             # Create plot
             fig, ax = plt.subplots(figsize=FIGSIZE)
 
