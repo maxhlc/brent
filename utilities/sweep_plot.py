@@ -199,19 +199,19 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             # Extract subtable
             idx = np.logical_and(df["duration"] == window, df["samples"] == samples)
             df_ = df[idx].copy()
-            df_ = df_[["testDaysPostFitEpoch", "name", "errorDiffBetter"]]
+            df_ = df_[["testDaysPostFitEnd", "name", "errorDiffBetter"]]
 
             # Calculate limits
             # TODO: cleaner implementation
             xlim = (
-                np.min(df_["testDaysPostFitEpoch"].explode(["testDaysPostFitEpoch"])),
-                np.max(df_["testDaysPostFitEpoch"].explode(["testDaysPostFitEpoch"])),
+                np.min(df_["testDaysPostFitEnd"].explode(["testDaysPostFitEnd"])),
+                np.max(df_["testDaysPostFitEnd"].explode(["testDaysPostFitEnd"])),
             )
 
             # Expand data frame
             df_ = (
-                df_.explode(["testDaysPostFitEpoch", "errorDiffBetter"])
-                .groupby(["name", "testDaysPostFitEpoch"])
+                df_.explode(["testDaysPostFitEnd", "errorDiffBetter"])
+                .groupby(["name", "testDaysPostFitEnd"])
                 .mean()
             )
 
@@ -221,7 +221,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             # Plot position RMSEs
             sns.lineplot(
                 data=df_,
-                x="testDaysPostFitEpoch",
+                x="testDaysPostFitEnd",
                 y="errorDiffBetter",
                 hue="name",
             )
@@ -316,15 +316,16 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Drop failed cases
     df_.dropna(inplace=True)
 
-    # Calculate fit epoch
-    df_["fitEpoch"] = df_["start"] + df_["duration"]
+    # Calculate fit end
+    # TODO: rename start/duration
+    df_["fitEnd"] = df_["start"] + df_["duration"]
 
     # Calculate date relative to epoch
     func = lambda dates, epoch: duration_to_days(dates - epoch)
-    func_dates = lambda x: func(x.dates, x.fitEpoch)
-    func_testDates = lambda x: func(x.testDates, x.fitEpoch)
-    df_["daysPostFitEpoch"] = df_.apply(func_dates, axis=1)
-    df_["testDaysPostFitEpoch"] = df_.apply(func_testDates, axis=1)
+    func_dates = lambda x: func(x.fitDates, x.fitEnd)
+    func_testDates = lambda x: func(x.testDates, x.fitEnd)
+    df_["daysPostFitEnd"] = df_.apply(func_dates, axis=1)
+    df_["testDaysPostFitEnd"] = df_.apply(func_testDates, axis=1)
 
     # Calculate position RMSE
     df_["fitErrorRMS"] = df_["fitError"].apply(lambda x: np.sqrt(np.mean(x**2)))

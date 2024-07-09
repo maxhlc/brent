@@ -60,10 +60,23 @@ def load(fpath):
 
 
 def fit(spacecraft, parameters):
-    # Extract dates
+    # Extract number of samples
+    samples = parameters["samples"]
+
+    ## Extract dates
+    # Fit
     fitStartDate = parameters["start"]
     fitDuration = parameters["duration"]
     fitEndDate = fitStartDate + fitDuration
+    # Test
+    testStartDate = fitStartDate
+    testDuration = fitDuration + timedelta(30)
+    testEndDate = testStartDate + testDuration
+
+    # Generate dates
+    # TODO: set sampling technique, testing duration
+    fitDates = pd.date_range(fitStartDate, fitEndDate, periods=samples)
+    testDates = pd.date_range(testStartDate, testEndDate, freq="1h")
 
     # Extract physical model parameters
     model = brent.propagators.NumericalPropagatorParameters(**spacecraft["model"])
@@ -84,44 +97,36 @@ def fit(spacecraft, parameters):
     else:
         covarianceProvider = brent.filter.CovarianceProvider()
 
-    # Extract sample and test dates
-    # TODO: set sampling technique, testing duration
-    samples = parameters["samples"]
-    dates = pd.date_range(fitStartDate, fitEndDate, periods=samples)
-    testDates = pd.date_range(fitStartDate, fitEndDate + timedelta(30), freq="1h")
-
-    # Extract test propagator
-    testPropagator = spacecraft["sp3propagator"]
-
     # Load TLEs
+    # TODO: include TLEs from before window?
     tlePropagator = brent.propagators.TLEPropagator.load(
         spacecraft["tle"],
-        np.min(dates),
-        np.max(dates),
+        np.min(fitDates),
+        np.max(fitDates),
     )
 
     # Generate psuedo-observation states
-    sampleStates = tlePropagator.propagate(dates)
+    sampleStates = tlePropagator.propagate(fitDates)
 
     # Debias the sample states
-    sampleStates = biasModel.debias(dates, sampleStates)
+    sampleStates = biasModel.debias(fitDates, sampleStates)
 
     # Declare propagator builder
-    builder = brent.propagators.NumericalPropagator.builder(
-        dates[0],
+    fitPropagatorBuilder = brent.propagators.NumericalPropagator.builder(
+        fitDates[0],
         sampleStates[0, :],
         model,
     )
 
     # Generate observations
-    observations = brent.filter.generate_observations(
-        dates,
+    fitObservations = brent.filter.generate_observations(
+        fitDates,
         sampleStates,
         covarianceProvider,
     )
 
     # Create filter
-    filter = brent.filter.BatchLeastSquares(builder, observations)
+    filter = brent.filter.BatchLeastSquares(fitPropagatorBuilder, fitObservations)
 
     # Execute filter
     fitPropagator = filter.estimate()
@@ -130,7 +135,9 @@ def fit(spacecraft, parameters):
     fitCovariance = filter.covariance()[0:6, 0:6]
 
     # Generate fit states
-    fitStates = fitPropagator.propagate(dates)
+    fitStates = fitPropagator.propagate(fitDates)
+
+    # TODO: extract updated model parameters (e.g. SRP, if estimated)
 
     # Calculate RTN transformations
     RTN = brent.frames.rtn(fitStates)
@@ -139,6 +146,7 @@ def fit(spacecraft, parameters):
     fitCovarianceRTN = RTN[0, :, :] @ fitCovariance @ RTN[0, :, :].T
 
     # Calculate state residuals
+    # TODO: check order
     deltaStates = sampleStates - fitStates
 
     # Transform state residuals to RTN
@@ -148,7 +156,11 @@ def fit(spacecraft, parameters):
     residualCovariance = np.cov(deltaStates, rowvar=False)
     residualCovarianceRTN = np.cov(deltaStatesRTN, rowvar=False)
 
+    # Extract test propagator
+    testPropagator: brent.propagators.Propagator = spacecraft["sp3propagator"]
+
     # Calculate test states
+    testStates = testPropagator.propagate(testDates)
     sampleTestStates = tlePropagator.propagate(testDates)
     fitTestStates = fitPropagator.propagate(testDates)
 
@@ -161,19 +173,23 @@ def fit(spacecraft, parameters):
 
     # Return results
     return {
-        "dates": dates,
+        # Fit parameters
+        "fitDates": fitDates,
         "sampleStates": sampleStates,
         "fitStates": fitStates,
+        # Fit metrics
         "deltaStates": deltaStates,
         "deltaStatesRTN": deltaStatesRTN,
         "fitCovariance": fitCovariance,
         "fitCovarianceRTN": fitCovarianceRTN,
         "residualCovariance": residualCovariance,
         "residualCovarianceRTN": residualCovarianceRTN,
+        # Test parameters
         "testDates": testDates,
         "sampleTestStates": sampleTestStates,
         "fitTestStates": fitTestStates,
         "testStates": testStates,
+        # Test metrics
         "sampleError": sampleError,
         "fitError": fitError,
         "proportion": proportion,
