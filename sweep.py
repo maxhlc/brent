@@ -151,11 +151,10 @@ def fit(spacecraft, parameters):
     # Calculate test states
     sampleTestStates = tlePropagator.propagate(testDates)
     fitTestStates = fitPropagator.propagate(testDates)
-    testStates = testPropagator.propagate(testDates)
 
-    # Calculate position error
-    sampleError = np.linalg.norm(sampleTestStates - testStates, axis=1)
-    fitError = np.linalg.norm(fitTestStates - testStates, axis=1)
+    # Calculate position errors
+    sampleError = np.linalg.norm(sampleTestStates[:, 0:3] - testStates[:, 0:3], axis=1)
+    fitError = np.linalg.norm(fitTestStates[:, 0:3] - testStates[:, 0:3], axis=1)
 
     # Calculate proportion of fit period where the fit outperforms the samples
     proportion = np.mean(fitError <= sampleError)
