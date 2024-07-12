@@ -5,7 +5,7 @@ import json
 import os.path
 
 
-def main(input: str, output: str) -> None:
+def main(input: str) -> None:
     # Load sweep configuration
     with open(input) as fp:
         config = json.load(fp)
@@ -17,13 +17,10 @@ def main(input: str, output: str) -> None:
         config_["spacecraft"] = [ispacecraft]
         configs.append(config_)
 
-    # Ensure output directory exists
-    os.makedirs(os.path.abspath(output), exist_ok=True)
-
     # Save separated configurations
     for idx, iconfig in enumerate(configs):
         # Generate filename
-        output_path = os.path.join(output, f"sweep_split_{idx:03d}.json")
+        output_path = input + f"_split_{idx:03d}.json"
 
         # Save configuration
         with open(output_path, "w") as fp:
@@ -33,9 +30,8 @@ def main(input: str, output: str) -> None:
 if __name__ == "__main__":
     # Parse input
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", type=str)
-    parser.add_argument("-o", "--output", type=str)
+    parser.add_argument("input", type=str)
     parser_args = parser.parse_args()
 
     # Execute main function
-    main(parser_args.input, parser_args.output)
+    main(parser_args.input)
