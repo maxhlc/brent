@@ -99,14 +99,14 @@ def fit(spacecraft, parameters):
 
     # Load TLEs
     # TODO: include TLEs from before window?
-    tlePropagator = brent.propagators.TLEPropagator.load(
+    samplePropagator = brent.propagators.TLEPropagator.load(
         spacecraft["tle"],
-        np.min(fitDates),
-        np.max(fitDates),
+        fitStartDate,
+        fitEndDate,
     )
 
     # Generate psuedo-observation states
-    sampleStates = tlePropagator.propagate(fitDates)
+    sampleStates = samplePropagator.propagate(fitDates)
 
     # Debias the sample states
     sampleStates = biasModel.debias(fitDates, sampleStates)
@@ -161,7 +161,7 @@ def fit(spacecraft, parameters):
 
     # Calculate test states
     testStates = testPropagator.propagate(testDates)
-    sampleTestStates = tlePropagator.propagate(testDates)
+    sampleTestStates = samplePropagator.propagate(testDates)
     fitTestStates = fitPropagator.propagate(testDates)
 
     # Calculate position errors
@@ -186,9 +186,9 @@ def fit(spacecraft, parameters):
         "residualCovarianceRTN": residualCovarianceRTN,
         # Test parameters
         "testDates": testDates,
+        "testStates": testStates,
         "sampleTestStates": sampleTestStates,
         "fitTestStates": fitTestStates,
-        "testStates": testStates,
         # Test metrics
         "sampleError": sampleError,
         "fitError": fitError,
@@ -278,7 +278,7 @@ def main(spacecraft, arguments):
 if __name__ == "__main__":
     # Parse input
     parser = ArgumentParser()
-    parser.add_argument("--input", type=str, default="./input/sweep.json")
+    parser.add_argument("input", type=str, default="./input/sweep.json")
     parser_args = parser.parse_args()
 
     # Load arguments
