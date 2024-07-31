@@ -316,6 +316,10 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Drop failed cases
     df_.dropna(inplace=True)
 
+    # Bodge to allow plotting with older results
+    if "fitDates" not in df_.columns:
+        df_.rename(columns={"dates": "fitDates"}, inplace=True)
+
     # Calculate fit end
     # TODO: rename start/duration
     df_["fitEnd"] = df_["start"] + df_["duration"]
