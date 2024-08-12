@@ -257,7 +257,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             plt.ylabel(f"Proportion (w.r.t. {referencePropagator}) [-]")
 
             # Update legend title
-            plt.legend(title="Object")
+            plt.legend(title="Satellite")
 
             # Set axis limits
             plt.xlim(xlim)
@@ -320,7 +320,7 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             plt.ylabel(f"Position RMSE (w.r.t. {referencePropagator}) [m]")
 
             # Update legend title
-            plt.legend(title="Object")
+            plt.legend(title="Satellite")
 
             # Set limits
             # TODO: y-axis
