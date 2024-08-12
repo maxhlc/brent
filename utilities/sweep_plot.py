@@ -12,6 +12,7 @@ FIGSIZE = (5.5, 4.0)
 
 # Declare name map
 SP3MAP = {
+    None: "Unassigned",  # TODO: replace bodge for objects without SP3 name
     "L51": "LAGEOS-1",
     "L52": "LAGEOS-2",
     "L53": "Etalon 1",
