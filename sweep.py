@@ -47,9 +47,19 @@ def load(fpath):
         for ispacecraft in arguments_raw["spacecraft"]
     ]
 
+    # Generate fit window dates (ensuring end date is included)
+    start_ = pd.DatetimeIndex(
+        np.unique(
+            np.append(
+                pd.date_range(start, end, freq=frequency),
+                pd.DatetimeIndex([end]),
+            ),
+        ),
+    )
+
     # Store arguments
     arguments = {
-        "start": pd.date_range(start, end, freq=frequency),
+        "start": start_,
         "duration": duration,
         "samples": samples,
         "noise": noise,
