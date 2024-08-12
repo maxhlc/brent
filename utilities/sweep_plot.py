@@ -23,6 +23,11 @@ SP3MAP = {
 duration_to_days = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
 
 
+def roundup(val: float, interval: float) -> float:
+    # Return value, rounded up to specified interval
+    return val + (interval - val % interval)
+
+
 def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
     # TODO: cleaner implementation
@@ -282,10 +287,17 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
 
 def plot_errors(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
-    # TODO: cleaner implementation
+    # TODO: cleaner implementation, adjust rounding interval based on maximum value
     xlim = (
         np.min(df["start"]),
         np.max(df["start"]),
+    )
+    ylim = (
+        0,
+        roundup(
+            np.max(df["fitErrorRMS"]),
+            5000,
+        ),
     )
 
     # Iterate through windows
@@ -323,9 +335,8 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             plt.legend(title="Satellite")
 
             # Set limits
-            # TODO: y-axis
             plt.xlim(xlim)
-            plt.ylim((0, 10e3))
+            plt.ylim(ylim)
 
             # Format dates
             fig.autofmt_xdate()
@@ -375,6 +386,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df_["errorDiffBetter"] = df_["errorDiff"].apply(lambda x: (x < 0.0).astype(float))
 
     # Map names
+    # TODO: replace
     df_["name"] = df_["sp3name"].apply(lambda x: SP3MAP[x])
 
     # Return updated table
