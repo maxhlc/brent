@@ -40,6 +40,14 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         y = duration_to_days(df_object["duration"])
         z = df_object["fitErrorRMS"].to_numpy()
 
+        # Extract reference propagator
+        referencePropagators = np.unique(df_object["referencePropagator"])
+        referencePropagator = referencePropagators[0]
+
+        # Raise error for multiple reference propagators
+        if len(referencePropagators) != 1:
+            raise ValueError("Mixture of reference propagators")
+
         # Find unique x-y coordinates
         xu = np.unique(x)
         yu = np.unique(y)
@@ -87,7 +95,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.ylabel("Fit Window Size [days]")
 
         # Add colour bar
-        plt.colorbar(label="Position RMSE [m]")
+        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [m]")
 
         # Format dates
         fig.autofmt_xdate()
@@ -122,6 +130,14 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         x = df_object["start"].to_numpy()
         y = df_object["samples"].to_numpy()
         z = df_object["fitErrorRMS"].to_numpy()
+
+        # Extract reference propagator
+        referencePropagators = np.unique(df_object["referencePropagator"])
+        referencePropagator = referencePropagators[0]
+
+        # Raise error for multiple reference propagators
+        if len(referencePropagators) != 1:
+            raise ValueError("Mixture of reference propagators")
 
         # Find unique x-y coordinates
         xu = np.unique(x)
@@ -170,7 +186,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.ylabel("Sample Size [-]")
 
         # Add colour bar
-        plt.colorbar(label="Position RMSE [m]")
+        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [m]")
 
         # Format dates
         fig.autofmt_xdate()
@@ -199,6 +215,15 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             # Extract subtable
             idx = np.logical_and(df["duration"] == window, df["samples"] == samples)
             df_ = df[idx].copy()
+
+            # Extract reference propagator
+            referencePropagators = np.unique(df_["referencePropagator"])
+            referencePropagator = referencePropagators[0]
+
+            # Raise error for multiple reference propagators
+            if len(referencePropagators) != 1:
+                raise ValueError("Mixture of reference propagators")
+
             df_ = df_[["testDaysPostFitEnd", "name", "errorDiffBetter"]]
 
             # Calculate limits
@@ -228,7 +253,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
 
             # Set axis labels
             plt.xlabel("Elapsed Time Post-fit [days]")
-            plt.ylabel("Proportion [-]")
+            plt.ylabel(f"Proportion (w.r.t. {referencePropagator}) [-]")
 
             # Update legend title
             plt.legend(title="Object")
@@ -275,6 +300,14 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             # Sort subtable by object name
             df_ = df_.sort_values("name")
 
+            # Extract reference propagator
+            referencePropagators = np.unique(df_["referencePropagator"])
+            referencePropagator = referencePropagators[0]
+
+            # Raise error for multiple reference propagators
+            if len(referencePropagators) != 1:
+                raise ValueError("Mixture of reference propagators")
+
             # Create plot
             fig, ax = plt.subplots(figsize=FIGSIZE)
 
@@ -283,7 +316,7 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
 
             # Set axis labels
             plt.xlabel("Fit Window Start [-]")
-            plt.ylabel("Position RMSE [m]")
+            plt.ylabel(f"Position RMSE (w.r.t. {referencePropagator}) [m]")
 
             # Update legend title
             plt.legend(title="Object")
@@ -314,11 +347,13 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df_ = df.copy()
 
     # Drop failed cases
-    df_.dropna(inplace=True)
+    df_.dropna(subset=["fitStates"], inplace=True)
 
-    # Bodge to allow plotting with older results
+    # Bodges to allow plotting with older results
     if "fitDates" not in df_.columns:
         df_.rename(columns={"dates": "fitDates"}, inplace=True)
+    if "referencePropagator" not in df_.columns:
+        df_["referencePropagator"] = "SLR"
 
     # Calculate fit end
     # TODO: rename start/duration

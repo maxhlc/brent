@@ -157,7 +157,12 @@ def fit(spacecraft, parameters):
     residualCovarianceRTN = np.cov(deltaStatesRTN, rowvar=False)
 
     # Extract test propagator
-    testPropagator: brent.propagators.Propagator = spacecraft["sp3propagator"]
+    if spacecraft["sp3propagator"] is None:
+        testPropagator = brent.propagators.TLEPropagator.load(spacecraft["tle"])
+        referencePropagator = "TLE"
+    else:
+        testPropagator: brent.propagators.Propagator = spacecraft["sp3propagator"]
+        referencePropagator = "SLR"
 
     # Calculate test states
     testStates = testPropagator.propagate(testDates)
@@ -185,6 +190,7 @@ def fit(spacecraft, parameters):
         "residualCovariance": residualCovariance,
         "residualCovarianceRTN": residualCovarianceRTN,
         # Test parameters
+        "referencePropagator": referencePropagator,
         "testDates": testDates,
         "testStates": testStates,
         "sampleTestStates": sampleTestStates,
@@ -219,6 +225,12 @@ def fit_wrapper(inputs):
 def main(spacecraft, arguments):
     # Load SP3 propagators
     for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
+        # No SP3 propagator
+        if ispacecraft["sp3"] is None:
+            ispacecraft["sp3propagator"] = None
+            continue
+
+        # Load SP3 propagator
         ispacecraft["sp3propagator"] = brent.propagators.SP3Propagator.load(
             ispacecraft["sp3"],
             ispacecraft["sp3name"],
