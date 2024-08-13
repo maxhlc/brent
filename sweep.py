@@ -136,7 +136,7 @@ def fit(spacecraft, parameters):
     )
 
     # Create filter
-    filter = brent.filter.BatchLeastSquares(fitPropagatorBuilder, fitObservations)
+    filter = brent.filter.OrekitBatchLeastSquares(fitPropagatorBuilder, fitObservations)
 
     # Execute filter
     fitPropagator = filter.estimate()

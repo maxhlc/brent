@@ -12,7 +12,7 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 import brent.propagators
 
 
-class BatchLeastSquares:
+class OrekitBatchLeastSquares:
     def __init__(self, builder, observations):
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)
