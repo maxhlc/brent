@@ -23,18 +23,19 @@ from .propagator import Propagator, WrappedPropagator
 
 class TLEPropagator(Propagator):
 
-    def __init__(self, tle: list[TLE]):
-        # TODO: allow input of single TLE
+    def __init__(self, tle: TLE | list[TLE]):
+        # Ensure list of TLEs
+        tles = tle if not isinstance(tle, TLE) else [tle]
 
         # Check for number of TLEs
-        if len(tle) < 1:
+        if len(tles) < 1:
             raise ValueError("Insufficent number of TLEs")
 
         # Store epochs and propagators
-        epochs = [absolutedate_to_datetime(itle.getDate()) for itle in tle]
+        epochs = [absolutedate_to_datetime(itle.getDate()) for itle in tles]
         propagators = [
             WrappedPropagator(OrekitTLEPropagator.selectExtrapolator(itle))
-            for itle in tle
+            for itle in tles
         ]
 
         # Store sorted epoch/propagator pairs
