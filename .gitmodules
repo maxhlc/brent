@@ -1,0 +1,3 @@
+[submodule "external/thalassa"]
+	path = external/thalassa
+	url = https://github.com/maxhlc/thalassa
