@@ -1,5 +1,9 @@
+# Standard imports
+from copy import deepcopy
+
 # Third-party imports
 import numpy as np
+import scipy.optimize
 
 # Orekit imports
 import orekit
@@ -9,7 +13,12 @@ from org.hipparchus.linear import QRDecomposer
 from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimizer
 
 # Internal imports
-import brent.propagators
+from brent import Constants
+from brent.propagators import (
+    WrappedPropagator,
+    ThalassaNumericalPropagator,
+    NumericalPropagatorParameters,
+)
 
 
 class OrekitBatchLeastSquares:
@@ -33,9 +42,9 @@ class OrekitBatchLeastSquares:
         # Store estimator
         self.estimator = estimator
 
-    def estimate(self):
+    def estimate(self) -> WrappedPropagator:
         # Execute fit propagator
-        return brent.propagators.WrappedPropagator(self.estimator.estimate()[0])
+        return WrappedPropagator(self.estimator.estimate()[0])
 
     def _jacobian(self) -> np.ndarray:
         # Extract weighted Jacobian matrix from the estimator
@@ -90,3 +99,79 @@ class OrekitBatchLeastSquares:
 
         # Return fit covariance
         return covariance
+
+
+class ThalassaBatchLeastSquares:
+
+    def __init__(
+        self,
+        dates: np.ndarray,
+        states: np.ndarray,
+        model: NumericalPropagatorParameters,
+    ) -> None:
+        # Store observation dates and states
+        self.dates = np.copy(dates)
+        self.states = np.copy(states)
+
+        # Store model
+        self.model = model
+
+        # TODO: observation uncertainties
+        # TODO: CR/CD estimation
+
+    def estimate(self) -> np.ndarray:
+        # Extract the dates, states, and model
+        dates = self.dates
+        states = self.states
+        model = self.model
+
+        # Set initial guess
+        x0 = states[0, :]
+
+        # Calculate position and velocity magnitudes
+        r0 = np.linalg.norm(states[0, 0:3])
+        v0 = np.linalg.norm(states[0, 3:6])
+
+        # Calculate scaling units
+        lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
+        vu = np.sqrt(Constants.DEFAULT_MU / lu)
+        fscale = np.array([[lu, lu, lu, vu, vu, vu]])
+
+        def fun(x):
+            # Extract initial state vector
+            stateInitial = x[0:6]
+
+            # Make a copy of the model parameters
+            model_ = deepcopy(model)
+
+            # TODO: adjust model if estimating CR/CD
+
+            # Create propagator
+            propagator = ThalassaNumericalPropagator(model_)
+
+            # Propagate states
+            states_ = propagator.propagate(dates, stateInitial)
+
+            # Ensure propagator is destroyed before the next run
+            # NOTE: this is due to threading issues within THALASSA
+            del propagator
+
+            # Calculate state errors
+            delta = states_ - states
+
+            # Scale state error
+            delta /= fscale
+
+            # Return vector of state errors
+            return delta.ravel()
+
+        # Execute optimiser
+        sol = scipy.optimize.least_squares(
+            fun,
+            x0,
+            x_scale=fscale.ravel(),
+        )
+
+        # Return solution
+        # TODO: return initialised propagator
+        return sol.x

@@ -122,7 +122,7 @@ def fit(spacecraft, parameters):
     sampleStates = biasModel.debias(fitDates, sampleStates)
 
     # Declare propagator builder
-    fitPropagatorBuilder = brent.propagators.NumericalPropagator.builder(
+    fitPropagatorBuilder = brent.propagators.OrekitNumericalPropagator.builder(
         fitDates[0],
         sampleStates[0, :],
         model,

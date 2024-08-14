@@ -1,9 +1,10 @@
 # Standard imports
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Third-party imports
 import numpy as np
+import pandas as pd
 
 # Orekit imports
 import orekit
@@ -19,6 +20,7 @@ from org.orekit.forces.radiation import (
     IsotropicRadiationSingleCoefficient,
     RadiationSensitive,
 )
+from org.orekit.frames import FramesFactory
 from org.orekit.orbits import CartesianOrbit, PositionAngleType
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.conversion import (
@@ -28,12 +30,16 @@ from org.orekit.propagation.conversion import (
 from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
+# External imports
+import pythalassa
+
 # Internal imports
-from .propagator import WrappedPropagator
+from .propagator import Propagator, WrappedPropagator
 from brent import Constants
+import brent.paths
 
 # Default parameters
-DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-3)
+DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-8)
 
 
 @dataclass
@@ -57,7 +63,7 @@ class NumericalPropagatorParameters:
     srp_estimate: bool
 
 
-class NumericalPropagator(WrappedPropagator):
+class OrekitNumericalPropagator(WrappedPropagator):
 
     def __init__(
         self,
@@ -66,7 +72,7 @@ class NumericalPropagator(WrappedPropagator):
         model: NumericalPropagatorParameters,
     ):
         # Create propagator builder
-        propagatorBuilder = NumericalPropagator.builder(date, state, model)
+        propagatorBuilder = OrekitNumericalPropagator.builder(date, state, model)
 
         # Calculate number of parameters
         n = len(propagatorBuilder.getSelectedNormalizedParameters())
@@ -180,4 +186,92 @@ class NumericalPropagator(WrappedPropagator):
         state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
 
         # Return default propagator builder
-        return NumericalPropagator.__builder(state_, model)
+        return OrekitNumericalPropagator.__builder(state_, model)
+
+
+def date_to_MJD(date: datetime | np.datetime64) -> float:
+    # Ensure correct date type
+    if not isinstance(date, datetime):
+        date = pd.to_datetime(date)
+
+    # Calculate delta from 1st January 2000
+    delta_J2000 = date - datetime(2000, 1, 1, 0, 0, 0, 0)
+
+    # Convert to float
+    delta_J2000_days = delta_J2000 / timedelta(days=1)
+
+    # Add MJD offset
+    mjd = delta_J2000_days + 51544.0
+
+    # Return MJD
+    return mjd
+
+
+dates_to_MJD = np.vectorize(date_to_MJD)
+
+
+class ThalassaNumericalPropagator(Propagator):
+
+    def __init__(self, model_: NumericalPropagatorParameters):
+        # Declare model
+        model = pythalassa.Model()
+        # Set geopotential model
+        model.insgrav = pythalassa.NONSPHERICAL if model_.potential else pythalassa.SPHERICAL
+        model.gdeg = model_.potential_degree
+        model.gord = model_.potential_order
+        # Set lunisolar perturbations
+        model.iephem = pythalassa.EPHEM_SIMPLE  # TODO: switch to JPL?
+        model.isun = pythalassa.SUN_ENABLED if model_.sun else pythalassa.SUN_DISABLED
+        model.imoon = pythalassa.MOON_ENABLED if model_.moon else pythalassa.MOON_DISABLED
+        # Set drag model
+        model.idrag = pythalassa.DRAG_DISABLED  # TODO: setup
+        model.iF107 = pythalassa.FLUX_VARIABLE
+        # Set SRP model
+        model.iSRP = pythalassa.SRP_ENABLED_CONICAL if model_.srp else pythalassa.SRP_DISABLED
+
+        # Declare paths
+        paths = pythalassa.Paths()
+        paths.phys_path = brent.paths.THALASSA_DATA_PHYSICAL
+        paths.earth_path = brent.paths.THALASSA_DATA_EARTH
+        paths.kernel_path = brent.paths.THALASSA_DATA_KERNEL
+
+        # Declare settings
+        # TODO: set
+        settings = pythalassa.Settings()
+        settings.eqs = pythalassa.EDROMO_T  # TODO: add options for different methods?
+        settings.tol = 1e-10
+
+        # Declare spacecraft
+        spacecraft = pythalassa.Spacecraft()
+        # Set mass
+        spacecraft.mass = model_.mass
+        # Set drag properties
+        spacecraft.area_drag = 0.0  # TODO: set
+        spacecraft.cd = 0.0  # TODO: set
+        # Set SRP properties
+        spacecraft.area_srp = model_.area_srp
+        spacecraft.cr = model_.cr
+
+        # Declare model
+        self.propagator = pythalassa.Propagator(model, paths, settings, spacecraft)
+
+    def propagate(self, dates, state, frame=Constants.DEFAULT_ECI):
+        # Check requested frame is compatible with THALASSA
+        if frame != FramesFactory.getEME2000():
+            # TODO: check correct frame
+            raise ValueError("THALASSA only supports the EME2000 frame")
+
+        # Convert state vector to [km] and [km/s]
+        state_ = state.ravel() / 1000.0
+
+        # Convert dates to MJD floats
+        dates_ = dates_to_MJD(dates)
+
+        # Propagate states
+        states_ = self.propagator.propagate(dates_, state_)
+
+        # Transpose to row vectors and convert to [m] and [m/s]
+        states = states_.T * 1000.0
+
+        # Return states
+        return states
