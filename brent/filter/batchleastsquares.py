@@ -119,11 +119,14 @@ class ThalassaBatchLeastSquares:
         # TODO: observation uncertainties
         # TODO: CR/CD estimation
 
-    def estimate(self) -> np.ndarray:
+    def estimate(self) -> ThalassaNumericalPropagator:
         # Extract the dates, states, and model
         dates = self.dates
         states = self.states
         model = self.model
+
+        # Extract the initial date
+        dateInitial = dates[0]
 
         # Set initial guess
         x0 = states[0, :]
@@ -147,10 +150,10 @@ class ThalassaBatchLeastSquares:
             # TODO: adjust model if estimating CR/CD
 
             # Create propagator
-            propagator = ThalassaNumericalPropagator(model_)
+            propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
 
             # Propagate states
-            states_ = propagator.propagate(dates, stateInitial)
+            states_ = propagator.propagate(dates)
 
             # Ensure propagator is destroyed before the next run
             # NOTE: this is due to threading issues within THALASSA
@@ -172,6 +175,9 @@ class ThalassaBatchLeastSquares:
             x_scale=fscale.ravel(),
         )
 
+        # Extract estimated state
+        stateEstimated = sol.x[0:6]
+
         # Return solution
-        # TODO: return initialised propagator
-        return sol.x
+        # TODO: return with updated numerical model
+        return ThalassaNumericalPropagator(dateInitial, stateEstimated, model)

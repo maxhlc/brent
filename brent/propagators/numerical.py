@@ -212,7 +212,16 @@ dates_to_MJD = np.vectorize(date_to_MJD)
 
 class ThalassaNumericalPropagator(Propagator):
 
-    def __init__(self, model_: NumericalPropagatorParameters):
+    def __init__(
+        self,
+        date: datetime,
+        state: np.ndarray,
+        model_: NumericalPropagatorParameters,
+    ) -> None:
+        # Store initial date and state
+        self.date = date
+        self.state = state
+
         # Declare model
         model = pythalassa.Model()
         # Set geopotential model
@@ -239,7 +248,7 @@ class ThalassaNumericalPropagator(Propagator):
         # TODO: set
         settings = pythalassa.Settings()
         settings.eqs = pythalassa.EDROMO_T  # TODO: add options for different methods?
-        settings.tol = 1e-10
+        settings.tol = 1e-14
 
         # Declare spacecraft
         spacecraft = pythalassa.Spacecraft()
@@ -255,11 +264,21 @@ class ThalassaNumericalPropagator(Propagator):
         # Declare model
         self.propagator = pythalassa.Propagator(model, paths, settings, spacecraft)
 
-    def propagate(self, dates, state, frame=Constants.DEFAULT_ECI):
+    def propagate(self, dates, frame=Constants.DEFAULT_ECI):
         # Check requested frame is compatible with THALASSA
         if frame != FramesFactory.getEME2000():
             # TODO: check correct frame
             raise ValueError("THALASSA only supports the EME2000 frame")
+        
+        # TODO: check for monotonously increasing
+
+        # Check if first date matches stored initial date
+        if dates[0] != self.date:
+            # Propagate state to initial date
+            state = self.propagate(np.array([self.date, dates[0]]))[1, :]
+        else:
+            # Use stored initial state
+            state = self.state
 
         # Convert state vector to [km] and [km/s]
         state_ = state.ravel() / 1000.0
