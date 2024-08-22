@@ -37,10 +37,10 @@ def load(fpath):
     # Extract spacecraft parameters
     spacecraft = [
         {
+            "name": ispacecraft["name"],
             "tle": ispacecraft["tle"],
             "sp3": ispacecraft["sp3"],
             "sp3name": ispacecraft["sp3name"],
-            "output": ispacecraft["output"],
             "model": {**model, **ispacecraft["model"]},
             "bias": ispacecraft["bias"],
         }

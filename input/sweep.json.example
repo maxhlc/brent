@@ -37,10 +37,10 @@
     },
     "spacecraft": [
         {
+            "name": "LAGEOS-1",
             "tle": "./data/tle/8820.json",
             "sp3": "./data/sp3/lageos1/*.sp3",
             "sp3name": "L51",
-            "output": "./output/LAGEOS1",
             "model": {
                 "mass": 406.965,
                 "area_srp": 0.282743338
@@ -56,10 +56,10 @@
             }
         },
         {
+            "name": "LAGEOS-2",
             "tle": "./data/tle/22195.json",
             "sp3": "./data/sp3/lageos2/*.sp3",
             "sp3name": "L52",
-            "output": "./output/LAGEOS2",
             "model": {
                 "mass": 405.38,
                 "area_srp": 0.282743338
@@ -75,10 +75,10 @@
             }
         },
         {
+            "name": "Etalon 1",
             "tle": "./data/tle/19751.json",
             "sp3": "./data/sp3/etalon1/*.sp3",
             "sp3name": "L53",
-            "output": "./output/ETALON1",
             "model": {
                 "mass": 1415.0,
                 "area_srp": 1.315098959
@@ -94,10 +94,10 @@
             }
         },
         {
+            "name": "Etalon 2",
             "tle": "./data/tle/20026.json",
             "sp3": "./data/sp3/etalon2/*.sp3",
             "sp3name": "L54",
-            "output": "./output/ETALON2",
             "model": {
                 "mass": 1415.0,
                 "area_srp": 1.315098959

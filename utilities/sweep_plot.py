@@ -366,6 +366,8 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         df_.rename(columns={"dates": "fitDates"}, inplace=True)
     if "referencePropagator" not in df_.columns:
         df_["referencePropagator"] = "SLR"
+    if "name" not in df_.columns:
+        df_["name"] = df_["sp3name"].apply(lambda x: SP3MAP[x])
 
     # Calculate fit end
     # TODO: rename start/duration
@@ -384,10 +386,6 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Calculate error difference
     df_["errorDiff"] = df_["fitError"] - df_["sampleError"]
     df_["errorDiffBetter"] = df_["errorDiff"].apply(lambda x: (x < 0.0).astype(float))
-
-    # Map names
-    # TODO: replace
-    df_["name"] = df_["sp3name"].apply(lambda x: SP3MAP[x])
 
     # Return updated table
     return df_
