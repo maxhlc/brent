@@ -1,5 +1,6 @@
 # Standard imports
 from argparse import ArgumentParser
+from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import json
 import os
@@ -122,7 +123,7 @@ def fit(spacecraft, parameters):
     sampleStates = biasModel.debias(fitDates, sampleStates)
 
     # Create filter
-    filter = brent.filter.OrekitBatchLeastSquares(
+    filter = brent.filter.ThalassaBatchLeastSquares(
         fitDates,
         sampleStates,
         model,
@@ -133,12 +134,13 @@ def fit(spacecraft, parameters):
     fitPropagator = filter.estimate()
 
     # Get estimated covariance
-    fitCovariance = filter.covariance()[0:6, 0:6]
+    fitCovariance = filter.getCovariance()[0:6, 0:6]
+
+    # Get estimated model
+    modelEstimated = filter.getModel()
 
     # Generate fit states
     fitStates = fitPropagator.propagate(fitDates)
-
-    # TODO: extract updated model parameters (e.g. SRP, if estimated)
 
     # Calculate RTN transformations
     RTN = brent.frames.rtn(fitStates)
@@ -182,7 +184,9 @@ def fit(spacecraft, parameters):
         # Fit parameters
         "fitDates": fitDates,
         "sampleStates": sampleStates,
+        # Fit results
         "fitStates": fitStates,
+        "modelEstimated": asdict(modelEstimated),
         # Fit metrics
         "deltaStates": deltaStates,
         "deltaStatesRTN": deltaStatesRTN,

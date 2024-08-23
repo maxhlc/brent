@@ -36,6 +36,9 @@ class OrekitBatchLeastSquares:
         matrixDecomposer = QRDecomposer(1e-11)
         optimiser = GaussNewtonOptimizer(matrixDecomposer, False)
 
+        # Store model
+        self.model = model
+
         # Create builder
         builder = OrekitNumericalPropagator.builder(dates[0], states[0, :], model)
 
@@ -107,7 +110,7 @@ class OrekitBatchLeastSquares:
         # Return Jacobian matrix
         return jacobian
 
-    def covariance(self) -> np.ndarray:
+    def getCovariance(self) -> np.ndarray:
         # Extract estimated covariance
         covariance_ = self.estimator.getPhysicalCovariances(1e-16)
 
@@ -118,6 +121,11 @@ class OrekitBatchLeastSquares:
 
         # Return fit covariance
         return covariance
+
+    def getModel(self) -> NumericalPropagatorParameters:
+        # Return estimated model
+        # TODO: implement
+        return self.model
 
 
 class ThalassaBatchLeastSquares:
@@ -208,13 +216,23 @@ class ThalassaBatchLeastSquares:
         stateEstimated = popt[0:6]
 
         # Extract estimated model
-        modelEstimated = deepcopy(model)
-        if srp_estimate:
-            modelEstimated.cr = popt[6]
+        modelEstimated = self.getModel()
 
         # Return solution
         return ThalassaNumericalPropagator(dateInitial, stateEstimated, modelEstimated)
 
-    def covariance(self) -> np.ndarray:
+    def getCovariance(self) -> np.ndarray:
         # Return covariance matrix
         return self.pcov
+
+    def getModel(self) -> NumericalPropagatorParameters:
+        # Extract optimisation results
+        popt = self.popt
+
+        # Extract estimated model
+        model = deepcopy(self.model)
+        if self.srp_estimate:
+            model.cr = popt[6]
+
+        # Return estimated model
+        return model
