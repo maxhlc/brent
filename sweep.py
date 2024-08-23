@@ -232,7 +232,38 @@ def fit_wrapper(inputs):
     return result
 
 
+def save(df: pd.DataFrame, time: datetime, state: str) -> None:
+    # Stringfy time
+    time_str = time.strftime("%Y%m%d_%H%M%S_%f")
+
+    # Set output directory, and ensure it exists
+    directory = os.path.abspath(os.path.join("output", time_str))
+
+    # Ensure that the output directory exists
+    os.makedirs(directory, exist_ok=True)
+
+    # TODO: use different format than Pickle
+
+    # Set filename suffix
+    suffix = "" if state == "" else f"_{state}"
+
+    # Generate file name
+    fname = os.path.join(directory, time_str + suffix + ".pkl")
+
+    # Save results
+    try:
+        # Try to save the results
+        with open(fname, "wb") as fp:
+            df.to_pickle(fp)
+    except:
+        # Print error message
+        tqdm.write(f"Error saving file at: {fname}")
+
+
 def main(spacecraft, arguments):
+    # Save start time
+    start = datetime.now(timezone.utc)
+
     # Load SP3 propagators
     for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
         # No SP3 propagator
@@ -256,45 +287,40 @@ def main(spacecraft, arguments):
         for ispacecraft in spacecraft
     ]
 
-    # Execute fits
-    fits = [fit_wrapper(arg) for arg in tqdm(input_pairs, desc="Fit exec")]
+    # Declare list of results
+    fits = []
 
-    # Create DataFrame of results
+    # Set checkpoint state
+    # NOTE: this is to rotate checkpoint files to prevent corruption
+    #       if a crash occurs during the checkpoint save
+    state = "checkpoint_a"
+
+    for idx, arg in enumerate(tqdm(input_pairs, desc="Fit exec")):
+        # Execute fit
+        fit = fit_wrapper(arg)
+
+        # Store fit result
+        fits.append(fit)
+
+        # Checkpoint
+        # TODO: decide on number of cases? time since last checkpoint?
+        if (idx + 1) % 50 == 0:
+            # Create DataFrame of current results
+            df = pd.DataFrame(fits)
+
+            # Save current results
+            save(df, start, state)
+
+            # Set state for next checkpoint
+            state = "checkpoint_b" if state == "checkpoint_a" else "checkpoint_a"
+
+    # Create DataFrame of final results
     df = pd.DataFrame(fits)
 
-    # Set output directory, and ensure it exists
-    directory = "./output/"
-    os.makedirs(os.path.abspath(directory), exist_ok=True)
-
     # Save results
-    # TODO: use different format than Pickle
-    ia_max = 3
-    for ia in range(ia_max + 1):
-        # Set suffix (used if retry limit exceeded)
-        if ia == ia_max:
-            # Print warning message
-            print("Reverting to UUID mode")
+    save(df, start, "")
 
-            # Generate suffix
-            suffix = uuid.uuid4().hex
-        else:
-            # Set blank suffix
-            suffix = ""
-
-        # Generate file name
-        now = datetime.now(timezone.utc)
-        fname = directory + now.strftime("%Y%m%d_%H%M%S_%f") + suffix + ".pkl"
-
-        try:
-            # Try to save the results
-            with open(fname, "xb") as fp:
-                df.to_pickle(fp)
-
-            # Break retry loop
-            break
-        except:
-            # Print error message
-            print(f"Error saving file at: {fname} (Attempt {ia + 1}/{ia_max})")
+    # TODO: delete checkpoint files?
 
 
 if __name__ == "__main__":
