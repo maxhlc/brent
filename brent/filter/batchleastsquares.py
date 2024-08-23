@@ -3,6 +3,7 @@ from copy import deepcopy
 
 # Third-party imports
 import numpy as np
+import pandas as pd
 import scipy.optimize
 
 # Orekit imports
@@ -14,19 +15,29 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 
 # Internal imports
 from .covariance import CovarianceProvider
-from brent import Constants
+from .observations import generate_observations
 from brent.propagators import (
     WrappedPropagator,
+    OrekitNumericalPropagator,
     ThalassaNumericalPropagator,
     NumericalPropagatorParameters,
 )
 
 
 class OrekitBatchLeastSquares:
-    def __init__(self, builder, observations):
+    def __init__(
+        self,
+        dates: np.ndarray | pd.DatetimeIndex,
+        states: np.ndarray,
+        model: NumericalPropagatorParameters,
+        covarianceProvider: CovarianceProvider,
+    ):
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)
         optimiser = GaussNewtonOptimizer(matrixDecomposer, False)
+
+        # Create builder
+        builder = OrekitNumericalPropagator.builder(dates[0], states[0, :], model)
 
         # Create estimator
         estimator = BatchLSEstimator(optimiser, builder)
@@ -35,6 +46,9 @@ class OrekitBatchLeastSquares:
         estimator.setParametersConvergenceThreshold(1e-3)
         estimator.setMaxIterations(25)
         estimator.setMaxEvaluations(35)
+
+        # Generate observations
+        observations = generate_observations(dates, states, covarianceProvider)
 
         # Add observations to estimator
         for observation in observations:
@@ -110,10 +124,10 @@ class ThalassaBatchLeastSquares:
 
     def __init__(
         self,
-        dates: np.ndarray,
+        dates: np.ndarray | pd.DatetimeIndex,
         states: np.ndarray,
         model: NumericalPropagatorParameters,
-        covarianceProvider: CovarianceProvider = CovarianceProvider(),
+        covarianceProvider: CovarianceProvider,
     ) -> None:
         # Store observation dates and states
         self.dates = np.copy(dates)
