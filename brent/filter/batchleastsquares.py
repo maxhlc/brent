@@ -13,6 +13,7 @@ from org.hipparchus.linear import QRDecomposer
 from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimizer
 
 # Internal imports
+from .covariance import CovarianceProvider
 from brent import Constants
 from brent.propagators import (
     WrappedPropagator,
@@ -72,6 +73,10 @@ class OrekitBatchLeastSquares:
         return scales
 
     def jacobian(self) -> np.ndarray:
+        # Prevent execution
+        # TODO: finish implementation
+        raise NotImplementedError
+
         # Extract weighted Jacobian matrix
         # TODO: figure out how to remove the weighting!
         jacobian = self._jacobian()
@@ -108,6 +113,7 @@ class ThalassaBatchLeastSquares:
         dates: np.ndarray,
         states: np.ndarray,
         model: NumericalPropagatorParameters,
+        covarianceProvider: CovarianceProvider = CovarianceProvider(),
     ) -> None:
         # Store observation dates and states
         self.dates = np.copy(dates)
@@ -116,7 +122,9 @@ class ThalassaBatchLeastSquares:
         # Store model
         self.model = model
 
-        # TODO: observation uncertainties
+        # Store covariance provider
+        self.covarianceProvider = covarianceProvider
+
         # TODO: CR/CD estimation
 
     def estimate(self) -> ThalassaNumericalPropagator:
@@ -128,21 +136,9 @@ class ThalassaBatchLeastSquares:
         # Extract the initial date
         dateInitial = dates[0]
 
-        # Set initial guess
-        x0 = states[0, :]
-
-        # Calculate position and velocity magnitudes
-        r0 = np.linalg.norm(states[0, 0:3])
-        v0 = np.linalg.norm(states[0, 3:6])
-
-        # Calculate scaling units
-        lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
-        vu = np.sqrt(Constants.DEFAULT_MU / lu)
-        fscale = np.array([[lu, lu, lu, vu, vu, vu]])
-
-        def fun(x):
+        def fun(xdata, *params):
             # Extract initial state vector
-            stateInitial = x[0:6]
+            stateInitial = np.array(params[0:6])
 
             # Make a copy of the model parameters
             model_ = deepcopy(model)
@@ -159,25 +155,40 @@ class ThalassaBatchLeastSquares:
             # NOTE: this is due to threading issues within THALASSA
             del propagator
 
-            # Calculate state errors
-            delta = states_ - states
+            # Return calculated states
+            return states_.ravel()
 
-            # Scale state error
-            delta /= fscale
+        # Prepare data for fitting
+        xdata = dates
+        ydata = states.ravel()
 
-            # Return vector of state errors
-            return delta.ravel()
+        # Calculate residual noise
+        sigma = self.covarianceProvider.stddevs(states)
+
+        # Set initial guess
+        p0 = states[0, :]
 
         # Execute optimiser
-        sol = scipy.optimize.least_squares(
+        popt, pcov = scipy.optimize.curve_fit(
             fun,
-            x0,
-            x_scale=fscale.ravel(),
+            xdata,
+            ydata,
+            p0,
+            sigma=sigma,
+            absolute_sigma=True,
         )
 
+        # Store optimisation results
+        self.popt = popt
+        self.pcov = pcov
+
         # Extract estimated state
-        stateEstimated = sol.x[0:6]
+        stateEstimated = popt[0:6]
 
         # Return solution
         # TODO: return with updated numerical model
         return ThalassaNumericalPropagator(dateInitial, stateEstimated, model)
+
+    def covariance(self) -> np.ndarray:
+        # Return covariance matrix
+        return self.pcov
