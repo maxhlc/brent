@@ -121,22 +121,13 @@ def fit(spacecraft, parameters):
     # Debias the sample states
     sampleStates = biasModel.debias(fitDates, sampleStates)
 
-    # Declare propagator builder
-    fitPropagatorBuilder = brent.propagators.OrekitNumericalPropagator.builder(
-        fitDates[0],
-        sampleStates[0, :],
-        model,
-    )
-
-    # Generate observations
-    fitObservations = brent.filter.generate_observations(
+    # Create filter
+    filter = brent.filter.OrekitBatchLeastSquares(
         fitDates,
         sampleStates,
+        model,
         covarianceProvider,
     )
-
-    # Create filter
-    filter = brent.filter.OrekitBatchLeastSquares(fitPropagatorBuilder, fitObservations)
 
     # Execute filter
     fitPropagator = filter.estimate()
