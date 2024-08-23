@@ -295,6 +295,10 @@ def main(spacecraft, arguments):
     #       if a crash occurs during the checkpoint save
     state = "checkpoint_a"
 
+    # Set checkpoint frequency
+    # NOTE: at least twice, or every 50 iterations
+    checkpoint_frequency = np.min((len(input_pairs) // 3, 50))
+
     for idx, arg in enumerate(tqdm(input_pairs, desc="Fit exec")):
         # Execute fit
         fit = fit_wrapper(arg)
@@ -304,7 +308,7 @@ def main(spacecraft, arguments):
 
         # Checkpoint
         # TODO: decide on number of cases? time since last checkpoint?
-        if (idx + 1) % 50 == 0:
+        if ((idx + 1) % checkpoint_frequency == 0) and (idx + 1 != len(input_pairs)):
             # Create DataFrame of current results
             df = pd.DataFrame(fits)
 
