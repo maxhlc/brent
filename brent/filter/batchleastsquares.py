@@ -135,6 +135,7 @@ class ThalassaBatchLeastSquares:
 
         # Store model
         self.model = model
+        self.srp_estimate = model.srp_estimate
 
         # Store covariance provider
         self.covarianceProvider = covarianceProvider
@@ -146,6 +147,7 @@ class ThalassaBatchLeastSquares:
         dates = self.dates
         states = self.states
         model = self.model
+        srp_estimate = self.srp_estimate
 
         # Extract the initial date
         dateInitial = dates[0]
@@ -157,7 +159,10 @@ class ThalassaBatchLeastSquares:
             # Make a copy of the model parameters
             model_ = deepcopy(model)
 
-            # TODO: adjust model if estimating CR/CD
+            # Adjust model
+            # TODO: CD estimation
+            if srp_estimate:
+                model_.cr = params[6]
 
             # Create propagator
             propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
@@ -182,6 +187,8 @@ class ThalassaBatchLeastSquares:
 
         # Set initial guess
         p0 = states[0, :]
+        if self.srp_estimate:
+            p0 = np.append(p0, model.cr)
 
         # Execute optimiser
         popt, pcov = scipy.optimize.curve_fit(
@@ -200,9 +207,13 @@ class ThalassaBatchLeastSquares:
         # Extract estimated state
         stateEstimated = popt[0:6]
 
+        # Extract estimated model
+        modelEstimated = deepcopy(model)
+        if srp_estimate:
+            modelEstimated.cr = popt[6]
+
         # Return solution
-        # TODO: return with updated numerical model
-        return ThalassaNumericalPropagator(dateInitial, stateEstimated, model)
+        return ThalassaNumericalPropagator(dateInitial, stateEstimated, modelEstimated)
 
     def covariance(self) -> np.ndarray:
         # Return covariance matrix
