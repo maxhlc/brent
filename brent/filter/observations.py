@@ -32,11 +32,14 @@ def generate_observations(dates, states, covarianceProvider=CovarianceProvider()
     # Create observations
     for state, state_ in zip(states, states_):
         # Calculate covariance matrix
-        covariance = covarianceProvider(state)
+        covariance = covarianceProvider.covariance(state)
+
+        # Calculate diagonal standard deviations
+        sigmas = np.sqrt(np.diag(covariance))
 
         # Extract position and velocity sigmas
-        sigmaPosition = np.sqrt(np.diag(covariance[0:3, 0:3])).tolist()
-        sigmaVelocity = np.sqrt(np.diag(covariance[3:6, 3:6])).tolist()
+        sigmaPosition = sigmas[0:3].tolist()
+        sigmaVelocity = sigmas[3:6].tolist()
 
         # Create observation
         pv = PV(

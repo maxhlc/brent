@@ -10,27 +10,19 @@ class CovarianceProvider:
     def __init__(self):
         pass
 
-    def __call__(self, state: np.ndarray) -> np.ndarray:
+    def _covariance(self, state: np.ndarray) -> np.ndarray:
         # Return identity matrix
         return np.identity(len(state))
 
-    def stddev(self, state: np.ndarray) -> np.ndarray:
-        # Calculate standard deviation matrix
-        # NOTE: non-diagonal elements are discarded
-        sigma = np.sqrt(np.diag(np.diag(self(state))))
-
-        # Return standard deviation matrix
-        return sigma
-
-    def stddevs(self, states: np.ndarray) -> np.ndarray:
-        # Generate standard deviation matrices for each state
-        sigmas = [self.stddev(state) for state in states]
-
-        # Create block diagonal matrix
-        sigma = scipy.linalg.block_diag(*sigmas)
-
-        # Return standard deviation matrix
-        return sigma
+    def covariance(self, states: np.ndarray) -> np.ndarray:
+        if len(states.shape) == 1:  # Single state
+            # Return single covariance matrix
+            return self._covariance(states)
+        else:  # Multiple states
+            # Return block diagonal covariance matrix
+            return scipy.linalg.block_diag(
+                *[self._covariance(state) for state in states]
+            )
 
 
 class RTNCovarianceProvider(CovarianceProvider):
@@ -41,8 +33,9 @@ class RTNCovarianceProvider(CovarianceProvider):
         # Create RTN covariance matrix
         self.covarianceRTN = np.diag(sigma) ** 2
 
-    def __call__(self, state: np.ndarray) -> np.ndarray:
+    def _covariance(self, state: np.ndarray) -> np.ndarray:
         # Calculate RTN transform
+        # TODO: vectorise for multiple states?
         rtn = brent.frames.rtn(state.reshape((1, 6)))[0, :, :]
 
         # Rotate covariance matrix to inertial frame

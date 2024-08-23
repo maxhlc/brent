@@ -177,7 +177,8 @@ class ThalassaBatchLeastSquares:
         ydata = states.ravel()
 
         # Calculate residual noise
-        sigma = self.covarianceProvider.stddevs(states)
+        # NOTE: scipy.curve_fit expects covariances
+        sigma = self.covarianceProvider.covariance(states)
 
         # Set initial guess
         p0 = states[0, :]
