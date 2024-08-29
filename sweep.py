@@ -325,7 +325,7 @@ def main(spacecraft, arguments):
 if __name__ == "__main__":
     # Parse input
     parser = ArgumentParser()
-    parser.add_argument("input", type=str, default="./input/sweep.json")
+    parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
     parser_args = parser.parse_args()
 
     # Load arguments
