@@ -123,7 +123,7 @@ def fit(spacecraft, parameters):
     sampleStates = biasModel.debias(fitDates, sampleStates)
 
     # Create filter
-    filter = brent.filter.ThalassaBatchLeastSquares(
+    filter = brent.filter.OrekitBatchLeastSquares(
         fitDates,
         sampleStates,
         model,
