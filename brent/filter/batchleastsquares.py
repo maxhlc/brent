@@ -213,7 +213,7 @@ class ThalassaBatchLeastSquares:
         self.pcov = pcov
 
         # Extract estimated state
-        stateEstimated = popt[0:6]
+        stateEstimated = self.getEstimatedState()
 
         # Extract estimated model
         modelEstimated = self.getModel()
@@ -224,6 +224,10 @@ class ThalassaBatchLeastSquares:
     def getCovariance(self) -> np.ndarray:
         # Return covariance matrix
         return self.pcov
+
+    def getEstimatedState(self) -> np.ndarray:
+        # Return estimated state
+        return self.popt[0:6]
 
     def getModel(self) -> NumericalPropagatorParameters:
         # Extract optimisation results
