@@ -32,8 +32,8 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
     # TODO: cleaner implementation
     xlim = (
-        np.min(df["start"]),
-        np.max(df["start"]),
+        np.min(df["midPoint"]),
+        np.max(df["midPoint"]),
     )
 
     # Iterate through objects
@@ -42,7 +42,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
-        x = df_object["start"].to_numpy()
+        x = df_object["midPoint"].to_numpy()
         y = duration_to_days(df_object["duration"])
         z = df_object["fitErrorRMS"].to_numpy()
 
@@ -97,7 +97,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.xlim(xlim)
 
         # Set axis labels
-        plt.xlabel("Fit Window Start [-]")
+        plt.xlabel("Fit Window Midpoint [-]")
         plt.ylabel("Fit Window Size [days]")
 
         # Add colour bar
@@ -123,8 +123,8 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
     # TODO: cleaner implementation
     xlim = (
-        np.min(df["start"]),
-        np.max(df["start"]),
+        np.min(df["midPoint"]),
+        np.max(df["midPoint"]),
     )
 
     # Iterate through objects
@@ -133,7 +133,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         df_object = df[df["name"] == object].copy()
 
         # Extract x-y-z variables
-        x = df_object["start"].to_numpy()
+        x = df_object["midPoint"].to_numpy()
         y = df_object["samples"].to_numpy()
         z = df_object["fitErrorRMS"].to_numpy()
 
@@ -188,7 +188,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.xlim(xlim)
 
         # Set axis labels
-        plt.xlabel("Fit Window Start [-]")
+        plt.xlabel("Fit Window Midpoint [-]")
         plt.ylabel("Sample Size [-]")
 
         # Add colour bar
@@ -289,8 +289,8 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
     # TODO: cleaner implementation, adjust rounding interval based on maximum value
     xlim = (
-        np.min(df["start"]),
-        np.max(df["start"]),
+        np.min(df["midPoint"]),
+        np.max(df["midPoint"]),
     )
     ylim = (
         0,
@@ -325,10 +325,10 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             fig, ax = plt.subplots(figsize=FIGSIZE)
 
             # Plot position RMSEs
-            sns.lineplot(data=df_, x="start", y="fitErrorRMS", hue="name")
+            sns.lineplot(data=df_, x="midPoint", y="fitErrorRMS", hue="name")
 
             # Set axis labels
-            plt.xlabel("Fit Window Start [-]")
+            plt.xlabel("Fit Window Midpoint [-]")
             plt.ylabel(f"Position RMSE (w.r.t. {referencePropagator}) [m]")
 
             # Update legend title
@@ -361,6 +361,10 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Drop failed cases
     df_.dropna(subset=["fitStates"], inplace=True)
 
+    # Check for midpoint results
+    if "midPoint" not in df_.columns:
+        raise ValueError("Results do not include window midpoint. Older plotting tool may be required for these results.")
+
     # Bodges to allow plotting with older results
     if "fitDates" not in df_.columns:
         df_.rename(columns={"dates": "fitDates"}, inplace=True)
@@ -371,7 +375,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 
     # Calculate fit end
     # TODO: rename start/duration
-    df_["fitEnd"] = df_["start"] + df_["duration"]
+    df_["fitEnd"] = df_["midPoint"] + df_["duration"] / 2
 
     # Calculate date relative to epoch
     func = lambda dates, epoch: duration_to_days(dates - epoch)

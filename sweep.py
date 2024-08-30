@@ -4,7 +4,6 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import json
 import os
-import uuid
 
 # Third-party imports
 import numpy as np
@@ -60,7 +59,7 @@ def load(fpath):
 
     # Store arguments
     arguments = {
-        "start": start_,
+        "midPoint": start_,
         "duration": duration,
         "samples": samples,
         "noise": noise,
@@ -76,9 +75,10 @@ def fit(spacecraft, parameters):
 
     ## Extract dates
     # Fit
-    fitStartDate = parameters["start"]
     fitDuration = parameters["duration"]
-    fitEndDate = fitStartDate + fitDuration
+    fitMidPoint = parameters["midPoint"]
+    fitStartDate = fitMidPoint - fitDuration / 2
+    fitEndDate = fitMidPoint + fitDuration / 2
     # Test
     testStartDate = fitStartDate
     testDuration = fitDuration + timedelta(30)
@@ -294,7 +294,8 @@ def main(spacecraft, arguments):
     # NOTE: at least twice, or every 50 iterations
     checkpoint_frequency = np.min((len(input_pairs) // 3, 50))
 
-    for idx, arg in enumerate(tqdm(input_pairs, desc="Fit exec")):
+    # Iterate through input pairs
+    for idx, arg in enumerate(tqdm(input_pairs, desc="Fitting", dynamic_ncols=True)):
         # Execute fit
         fit = fit_wrapper(arg)
 
