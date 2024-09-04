@@ -16,6 +16,7 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 # Internal imports
 from .covariance import CovarianceProvider
 from .observations import generate_observations
+from brent import Constants
 from brent.propagators import (
     WrappedPropagator,
     OrekitNumericalPropagator,
@@ -145,6 +146,11 @@ class ThalassaBatchLeastSquares:
         self.model = model
         self.srp_estimate = model.srp_estimate
 
+        # Throw error if SRP estimation enabled without SRP
+        # TODO: force enable SRP?
+        if model.srp_estimate and not model.srp:
+            raise ValueError("Cannot estimate SRP if disabled in model")
+
         # Store covariance provider
         self.covarianceProvider = covarianceProvider
 
@@ -160,9 +166,9 @@ class ThalassaBatchLeastSquares:
         # Extract the initial date
         dateInitial = dates[0]
 
-        def fun(xdata, *params):
+        def fun(x):
             # Extract initial state vector
-            stateInitial = np.array(params[0:6])
+            stateInitial = np.array(x[0:6])
 
             # Make a copy of the model parameters
             model_ = deepcopy(model)
@@ -170,7 +176,7 @@ class ThalassaBatchLeastSquares:
             # Adjust model
             # TODO: CD estimation
             if srp_estimate:
-                model_.cr = params[6]
+                model_.cr = x[6]
 
             # Create propagator
             propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
@@ -183,34 +189,35 @@ class ThalassaBatchLeastSquares:
             del propagator
 
             # Return calculated states
-            return states_.ravel()
-
-        # Prepare data for fitting
-        xdata = dates
-        ydata = states.ravel()
-
-        # Calculate residual noise
-        # NOTE: scipy.curve_fit expects covariances
-        sigma = self.covarianceProvider.covariance(states)
+            return (states_ - states).ravel()
 
         # Set initial guess
-        p0 = states[0, :]
+        x0 = states[0, :]
         if self.srp_estimate:
-            p0 = np.append(p0, model.cr)
+            x0 = np.append(x0, model.cr)
+
+        # Calculate scaling units
+        r0 = np.linalg.norm(states[0, 0:3])
+        v0 = np.linalg.norm(states[0, 3:6])
+        lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
+        vu = np.sqrt(Constants.DEFAULT_MU / lu)
+        x_scale = np.array([lu, lu, lu, vu, vu, vu])
+        if self.srp_estimate:
+            x_scale = np.append(x_scale, 1.0)
 
         # Execute optimiser
-        popt, pcov = scipy.optimize.curve_fit(
+        # TODO: switch back to least_squares, pending investigation of curve_fit issues
+        sol = scipy.optimize.least_squares(
             fun,
-            xdata,
-            ydata,
-            p0,
-            sigma=sigma,
-            absolute_sigma=True,
+            x0,
+            method="lm",
+            x_scale=x_scale,
         )
 
         # Store optimisation results
-        self.popt = popt
-        self.pcov = pcov
+        # TODO: estimate covariance with weights?
+        self.popt = sol.x
+        self.pcov = np.linalg.inv(sol.jac.T @ sol.jac)
 
         # Extract estimated state
         stateEstimated = self.getEstimatedState()
