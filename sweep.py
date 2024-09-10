@@ -14,6 +14,115 @@ from tqdm import tqdm
 import brent
 
 
+class Saver:
+
+    def __init__(
+        self,
+        root: str,
+        save_period: int = 50,
+        retry_limit: int = 5,
+    ):
+        # Declare initialisation
+        self.initialised = False
+
+        # Loop until directory initialised
+        ntries = 0
+        while not self.initialised:
+            # Save start time and name
+            self.time = datetime.now(timezone.utc)
+            self.name = self.time.strftime("%Y%m%d_%H%M%S")
+
+            # Create directory
+            self.initialised = self._create_directory(root, self.name)
+
+            # Increment number of tries
+            ntries += 1
+
+            # Throw error if not initialised
+            if ntries > retry_limit:
+                raise ValueError("Failed to initialise")
+
+        # Store save period
+        self.save_period = save_period
+
+        # Initialise state
+        self.niter = 0
+        self._increment_state()
+
+        # Results
+        self.results = []
+
+    def update(self, result: dict) -> None:
+        # Append result to results
+        self.results.append(result)
+
+        # Trigger auto-save
+        if len(self.results) % self.save_period == 0:
+            self.save()
+
+    def save(self, final: bool = False) -> None:
+        # Set filename suffix
+        suffix = "" if final else f"_{self.state}"
+
+        # Generate file name
+        fname = os.path.join(self.directory, self.name + suffix + ".pkl")
+
+        # Convert results to DataFrame
+        df = pd.DataFrame(self.results)
+
+        # Save results
+        try:
+            # Try to save the results
+            with open(fname, "wb") as fp:
+                df.to_pickle(fp)
+
+            # Update state
+            if not final:
+                self._increment_state()
+        except:
+            # Print error message
+            tqdm.write(f"Error saving file at: {fname}")
+
+    def _create_directory(self, root: str, name: str) -> bool:
+        # Return if already initialised
+        if self.initialised:
+            return False
+
+        try:
+            # Generate output directory
+            directory = os.path.abspath(os.path.join(root, name))
+
+            # Throw error if the directory already exists
+            os.makedirs(directory, exist_ok=False)
+
+            # Store directory
+            self.directory = directory
+            self.initialised = True
+
+            # Return success
+            return True
+        except Exception as e:
+            tqdm.write(str(e))
+
+            # Return failure
+            return False
+
+    def save_input(self, input: str) -> None:
+        # Generate output path
+        output = os.path.join(self.directory, f"{self.name}_input.json")
+
+        # Copy the input file to the output path
+        with open(input, "rb") as src, open(output, "wb") as dest:
+            dest.write(src.read())
+
+    def _increment_state(self) -> None:
+        # Increment number iteration number
+        self.niter += 1
+
+        # Update state
+        self.state = "checkpoint_b" if self.niter % 2 == 0 else "checkpoint_a"
+
+
 def load(fpath):
     # Load configuration file
     with open(fpath, "r") as fid:
@@ -227,37 +336,13 @@ def fit_wrapper(inputs):
     return result
 
 
-def save(df: pd.DataFrame, time: datetime, state: str) -> None:
-    # Stringfy time
-    time_str = time.strftime("%Y%m%d_%H%M%S_%f")
+def main(input: str) -> None:
+    # Declare results saver
+    saver = Saver("./output")
+    saver.save_input(input)
 
-    # Set output directory, and ensure it exists
-    directory = os.path.abspath(os.path.join("output", time_str))
-
-    # Ensure that the output directory exists
-    os.makedirs(directory, exist_ok=True)
-
-    # TODO: use different format than Pickle
-
-    # Set filename suffix
-    suffix = "" if state == "" else f"_{state}"
-
-    # Generate file name
-    fname = os.path.join(directory, time_str + suffix + ".pkl")
-
-    # Save results
-    try:
-        # Try to save the results
-        with open(fname, "wb") as fp:
-            df.to_pickle(fp)
-    except:
-        # Print error message
-        tqdm.write(f"Error saving file at: {fname}")
-
-
-def main(spacecraft, arguments):
-    # Save start time
-    start = datetime.now(timezone.utc)
+    # Load arguments
+    spacecraft, arguments = load(input)
 
     # Load SP3 propagators
     for ispacecraft in tqdm(spacecraft, desc="SP3 load"):
@@ -282,43 +367,16 @@ def main(spacecraft, arguments):
         for ispacecraft in spacecraft
     ]
 
-    # Declare list of results
-    fits = []
-
-    # Set checkpoint state
-    # NOTE: this is to rotate checkpoint files to prevent corruption
-    #       if a crash occurs during the checkpoint save
-    state = "checkpoint_a"
-
-    # Set checkpoint frequency
-    # NOTE: at least twice, or every 50 iterations
-    checkpoint_frequency = np.min((len(input_pairs) // 3, 50))
-
     # Iterate through input pairs
-    for idx, arg in enumerate(tqdm(input_pairs, desc="Fitting", dynamic_ncols=True)):
+    for arg in tqdm(input_pairs, desc="Fitting", dynamic_ncols=True):
         # Execute fit
         fit = fit_wrapper(arg)
 
         # Store fit result
-        fits.append(fit)
+        saver.update(fit)
 
-        # Checkpoint
-        # TODO: decide on number of cases? time since last checkpoint?
-        if ((idx + 1) % checkpoint_frequency == 0) and (idx + 1 != len(input_pairs)):
-            # Create DataFrame of current results
-            df = pd.DataFrame(fits)
-
-            # Save current results
-            save(df, start, state)
-
-            # Set state for next checkpoint
-            state = "checkpoint_b" if state == "checkpoint_a" else "checkpoint_a"
-
-    # Create DataFrame of final results
-    df = pd.DataFrame(fits)
-
-    # Save results
-    save(df, start, "")
+    # Save final results
+    saver.save(final=True)
 
     # TODO: delete checkpoint files?
 
@@ -329,8 +387,5 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
     parser_args = parser.parse_args()
 
-    # Load arguments
-    spacecraft, arguments = load(parser_args.input)
-
     # Execute
-    main(spacecraft, arguments)
+    main(parser_args.input)
