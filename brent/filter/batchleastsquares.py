@@ -9,6 +9,7 @@ import scipy.optimize
 # Orekit imports
 import orekit
 from org.orekit.estimation.leastsquares import BatchLSEstimator
+from org.orekit.propagation.numerical import NumericalPropagator
 from org.orekit.utils import ParameterDriver
 from org.hipparchus.linear import QRDecomposer
 from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimizer
@@ -62,8 +63,11 @@ class OrekitBatchLeastSquares:
         self.estimator = estimator
 
     def estimate(self) -> WrappedPropagator:
+        # Generate estimate
+        self._estimate = NumericalPropagator.cast_(self.estimator.estimate()[0])
+
         # Execute fit propagator
-        return WrappedPropagator(self.estimator.estimate()[0])
+        return WrappedPropagator(self._estimate)
 
     def _jacobian(self) -> np.ndarray:
         # Extract weighted Jacobian matrix from the estimator
@@ -124,9 +128,37 @@ class OrekitBatchLeastSquares:
         return covariance
 
     def getModel(self) -> NumericalPropagatorParameters:
+        # Extract estimated model
+        model = deepcopy(self.model)
+
+        # Extract force models
+        forceModels = self._estimate.getAllForceModels()
+
+        # TODO: make much cleaner
+
+        # Iterate through force models
+        for idx in range(forceModels.size()):
+            # Extract force model
+            forceModel = forceModels.get(idx)
+
+            # Extract force model drivers
+            drivers = forceModel.getParametersDrivers()
+
+            # Iterate through drivers
+            for jdx in range(drivers.size()):
+                # Extract driver
+                driver = drivers.get(jdx)
+
+                # Extract driver name and value
+                driverName = driver.getName()
+                driverValue = driver.getValue()
+
+                # Update CR
+                if driverName == "reflection coefficient":
+                    model.cr = driverValue
+
         # Return estimated model
-        # TODO: implement
-        return self.model
+        return model
 
 
 class ThalassaBatchLeastSquares:
