@@ -235,10 +235,10 @@ class ThalassaBatchLeastSquares:
         vu = np.sqrt(Constants.DEFAULT_MU / lu)
         x_scale = np.array([lu, lu, lu, vu, vu, vu])
         if self.srp_estimate:
-            x_scale = np.append(x_scale, 1.0)
+            x_scale = np.append(x_scale, 0.01)
 
         # Execute optimiser
-        # TODO: switch back to least_squares, pending investigation of curve_fit issues
+        # TODO: consider switching to Jacobian scaling?
         sol = scipy.optimize.least_squares(
             fun,
             x0,
