@@ -10,6 +10,7 @@ import pandas as pd
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
 from org.orekit.bodies import CelestialBodyFactory, OneAxisEllipsoid
+from org.orekit.forces.drag import DragForce, DragSensitive, IsotropicDrag
 from org.orekit.forces.gravity import (
     HolmesFeatherstoneAttractionModel,
     ThirdBodyAttraction,
@@ -21,6 +22,7 @@ from org.orekit.forces.radiation import (
     RadiationSensitive,
 )
 from org.orekit.frames import FramesFactory
+from org.orekit.models.earth.atmosphere import NRLMSISE00, NRLMSISE00InputParameters
 from org.orekit.orbits import CartesianOrbit, PositionAngleType
 from org.orekit.propagation import SpacecraftState
 from org.orekit.propagation.conversion import (
@@ -46,8 +48,6 @@ DEFAULT_INTEGRATOR = DormandPrince853IntegratorBuilder(0.1, 300.0, 1e-8)
 class NumericalPropagatorParameters:
     # Physical properties
     mass: float
-    area_srp: float
-    cr: float
 
     # Geopotential perturbations
     potential: bool
@@ -61,6 +61,14 @@ class NumericalPropagatorParameters:
     # SRP
     srp: bool
     srp_estimate: bool
+    cr: float
+    area_srp: float
+
+    # Drag
+    drag: bool
+    drag_estimate: bool
+    cd: float
+    area_drag: float
 
 
 class OrekitNumericalPropagator(WrappedPropagator):
@@ -86,7 +94,11 @@ class OrekitNumericalPropagator(WrappedPropagator):
         vel_ = Vector3D(*state[3:6].tolist())
         state_ = TimeStampedPVCoordinates(date_, pos_, vel_)
         spacecraftState = SpacecraftState(
-            CartesianOrbit(state_, Constants.DEFAULT_ECI, Constants.DEFAULT_MU)
+            CartesianOrbit(
+                state_,
+                Constants.DEFAULT_ECI,
+                Constants.DEFAULT_MU,
+            )
         )
 
         # Ensure initial state is correct
@@ -111,6 +123,13 @@ class OrekitNumericalPropagator(WrappedPropagator):
         # Set object mass
         propagatorBuilder.setMass(model.mass)
 
+        # Create Earth body
+        earthBody = OneAxisEllipsoid(
+            Constants.DEFAULT_RADIUS,
+            Constants.DEFAULT_FLATTENING,
+            Constants.DEFAULT_ECEF,
+        )
+
         # Get celestial bodies
         sun = CelestialBodyFactory.getSun()
         moon = CelestialBodyFactory.getMoon()
@@ -119,12 +138,14 @@ class OrekitNumericalPropagator(WrappedPropagator):
         if model.potential:
             # Load geopotential model
             gravityFieldProvider = GravityFieldFactory.getNormalizedProvider(
-                model.potential_degree, model.potential_order
+                model.potential_degree,
+                model.potential_order,
             )
 
             # Create geopotential force model
             gravityForceModel = HolmesFeatherstoneAttractionModel(
-                Constants.DEFAULT_ECEF, gravityFieldProvider
+                Constants.DEFAULT_ECEF,
+                gravityFieldProvider,
             )
 
             # Add geopotential force model to propagator
@@ -151,11 +172,7 @@ class OrekitNumericalPropagator(WrappedPropagator):
             # Create SRP force
             srp = SolarRadiationPressure(
                 sun,
-                OneAxisEllipsoid(
-                    Constants.DEFAULT_RADIUS,
-                    Constants.DEFAULT_FLATTENING,
-                    Constants.DEFAULT_ECEF,
-                ),
+                earthBody,
                 IsotropicRadiationSingleCoefficient(model.area_srp, model.cr),
             )
 
@@ -169,6 +186,25 @@ class OrekitNumericalPropagator(WrappedPropagator):
 
             # Add SRP to force model
             propagatorBuilder.addForceModel(srp)
+
+        # Drag model
+        if model.drag:
+            # Create drag force
+            drag = DragForce(
+                NRLMSISE00(NRLMSISE00InputParameters(), sun, earthBody),
+                IsotropicDrag(model.area_drag, model.cd),
+            )
+
+            # Enable CD estimation
+            if model.drag_estimate:
+                # Iterate through drivers
+                for driver in srp.getParametersDrivers():
+                    # Enable drag driver
+                    if driver.getName() == DragSensitive.DRAG_COEFFICIENT:
+                        driver.setSelected(True)
+
+            # Add drag to force model
+            propagatorBuilder.addForceModel(drag)
 
         # Return propagator builder
         return propagatorBuilder
@@ -269,7 +305,7 @@ class ThalassaNumericalPropagator(Propagator):
         if frame != FramesFactory.getEME2000():
             # TODO: check correct frame
             raise ValueError("THALASSA only supports the EME2000 frame")
-        
+
         # TODO: check for monotonously increasing
 
         # Check if first date matches stored initial date

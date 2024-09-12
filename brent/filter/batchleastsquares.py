@@ -177,16 +177,20 @@ class ThalassaBatchLeastSquares:
         # Store model
         self.model = model
         self.srp_estimate = model.srp_estimate
+        self.drag_estimate = model.drag_estimate
 
         # Throw error if SRP estimation enabled without SRP
         # TODO: force enable SRP?
         if model.srp_estimate and not model.srp:
             raise ValueError("Cannot estimate SRP if disabled in model")
 
+        # Throw error if drag estimation enabled without drag
+        # TODO: force enable drag?
+        if model.drag_estimate and not model.drag:
+            raise ValueError("Cannot estimate drag if disabled in model")
+
         # Store covariance provider
         self.covarianceProvider = covarianceProvider
-
-        # TODO: CR/CD estimation
 
     def estimate(self) -> ThalassaNumericalPropagator:
         # Extract the dates, states, and model
@@ -194,6 +198,7 @@ class ThalassaBatchLeastSquares:
         states = self.states
         model = self.model
         srp_estimate = self.srp_estimate
+        drag_estimate = self.drag_estimate
 
         # Extract the initial date
         dateInitial = dates[0]
@@ -206,9 +211,13 @@ class ThalassaBatchLeastSquares:
             model_ = deepcopy(model)
 
             # Adjust model
-            # TODO: CD estimation
-            if srp_estimate:
+            if srp_estimate and drag_estimate:
                 model_.cr = x[6]
+                model_.drag = x[7]
+            elif srp_estimate:
+                model_.cr = x[6]
+            elif drag_estimate:
+                model_.drag = x[6]
 
             # Create propagator
             propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
@@ -227,6 +236,8 @@ class ThalassaBatchLeastSquares:
         x0 = states[0, :]
         if self.srp_estimate:
             x0 = np.append(x0, model.cr)
+        if self.drag_estimate:
+            x0 = np.append(x0, model.cd)
 
         # Calculate scaling units
         r0 = np.linalg.norm(states[0, 0:3])
@@ -235,6 +246,8 @@ class ThalassaBatchLeastSquares:
         vu = np.sqrt(Constants.DEFAULT_MU / lu)
         x_scale = np.array([lu, lu, lu, vu, vu, vu])
         if self.srp_estimate:
+            x_scale = np.append(x_scale, 0.01)
+        if self.drag_estimate:
             x_scale = np.append(x_scale, 0.01)
 
         # Execute optimiser
@@ -274,8 +287,13 @@ class ThalassaBatchLeastSquares:
 
         # Extract estimated model
         model = deepcopy(self.model)
-        if self.srp_estimate:
+        if self.srp_estimate and self.drag_estimate:
             model.cr = popt[6]
+            model.cd = popt[7]
+        elif self.srp_estimate:
+            model.cr = popt[6]
+        elif self.drag_estimate:
+            model.drag = popt[6]
 
         # Return estimated model
         return model

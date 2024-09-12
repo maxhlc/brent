@@ -15,14 +15,17 @@
         ]
     },
     "model": {
-        "cr": 1.5,
         "potential": true,
         "potential_degree": 10,
         "potential_order": 10,
         "moon": true,
         "sun": true,
         "srp": false,
-        "srp_estimate": false
+        "srp_estimate": false,
+        "cr": 1.5,
+        "drag": false,
+        "drag_estimate": false,
+        "cd": 2.2
     },
     "noise": {
         "frame": "rtn",
@@ -43,7 +46,8 @@
             "sp3name": "L51",
             "model": {
                 "mass": 406.965,
-                "area_srp": 0.282743338
+                "area_srp": 0.282743338,
+                "area_drag":  0.282743338
             },
             "bias": {
                 "model": "simplifiedalongtracksinusoidal",
@@ -62,7 +66,8 @@
             "sp3name": "L52",
             "model": {
                 "mass": 405.38,
-                "area_srp": 0.282743338
+                "area_srp": 0.282743338,
+                "area_drag": 0.282743338
             },
             "bias": {
                 "model": "simplifiedalongtracksinusoidal",
@@ -81,7 +86,8 @@
             "sp3name": "L53",
             "model": {
                 "mass": 1415.0,
-                "area_srp": 1.315098959
+                "area_srp": 1.315098959,
+                "area_drag": 1.315098959
             },
             "bias": {
                 "model": "simplifiedalongtracksinusoidal",
@@ -100,7 +106,8 @@
             "sp3name": "L54",
             "model": {
                 "mass": 1415.0,
-                "area_srp": 1.315098959
+                "area_srp": 1.315098959,
+                "area_drag": 1.315098959
             },
             "bias": {
                 "model": "simplifiedalongtracksinusoidal",
