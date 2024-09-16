@@ -351,9 +351,9 @@ def fit_wrapper(inputs):
     return result
 
 
-def main(input: str) -> None:
+def main(input: str, output_dir: str) -> None:
     # Declare results saver
-    saver = Saver("./output")
+    saver = Saver(output_dir)
     saver.save_input(input)
 
     # Load arguments
@@ -400,7 +400,8 @@ if __name__ == "__main__":
     # Parse input
     parser = ArgumentParser()
     parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
+    parser.add_argument("-o", "--output_dir", type=str, default="./output/")
     parser_args = parser.parse_args()
 
     # Execute
-    main(parser_args.input)
+    main(parser_args.input, parser_args.output_dir)
