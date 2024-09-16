@@ -382,6 +382,16 @@ def main(input: str, output_dir: str) -> None:
         for ispacecraft in spacecraft
     ]
 
+    def sort_key(x):
+        # Extract arguments
+        arguments = x[1]
+
+        # Sort by duration, then number of samples
+        return arguments["duration"], arguments["samples"]
+
+    # Sort by descending expected execution time
+    input_pairs = sorted(input_pairs, key=sort_key, reverse=True)
+
     # Iterate through input pairs
     for arg in tqdm(input_pairs, desc="Fitting", dynamic_ncols=True):
         # Execute fit
