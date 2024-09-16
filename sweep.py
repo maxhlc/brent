@@ -137,11 +137,16 @@ def load(fpath):
     duration = [timedelta(iduration) for iduration in times["duration"]]
     samples = times["samples"]
 
+    # Extract propagator
+    propagator = arguments_raw["propagator"]
+    if propagator not in ["orekit", "thalassa"]:
+        raise ValueError("Unknown proapgator")
+
     # Extract default model
     model = arguments_raw["model"]
 
     # Extract noise model
-    noise = [arguments_raw["noise"]]
+    noise = arguments_raw["noise"]
 
     # Extract spacecraft parameters
     spacecraft = [
@@ -171,7 +176,8 @@ def load(fpath):
         "midPoint": start_,
         "duration": duration,
         "samples": samples,
-        "noise": noise,
+        "propagator": [propagator],
+        "noise": [noise],
     }
 
     # Return spacecraft and arguments
@@ -232,12 +238,21 @@ def fit(spacecraft, parameters):
     sampleStates = biasModel.debias(fitDates, sampleStates)
 
     # Create filter
-    filter = brent.filter.OrekitBatchLeastSquares(
-        fitDates,
-        sampleStates,
-        model,
-        covarianceProvider,
-    )
+    propagator = parameters["propagator"]
+    if propagator == "orekit":
+        filter = brent.filter.OrekitBatchLeastSquares(
+            fitDates,
+            sampleStates,
+            model,
+            covarianceProvider,
+        )
+    elif propagator == "thalassa":
+        filter = brent.filter.ThalassaBatchLeastSquares(
+            fitDates,
+            sampleStates,
+            model,
+            covarianceProvider,
+        )
 
     # Execute filter
     fitPropagator = filter.estimate()
