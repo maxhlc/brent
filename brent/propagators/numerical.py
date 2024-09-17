@@ -306,7 +306,11 @@ class ThalassaNumericalPropagator(Propagator):
             # TODO: check correct frame
             raise ValueError("THALASSA only supports the EME2000 frame")
 
-        # TODO: check for monotonously increasing
+        # Ensure dates increase/decrease monotonically
+        diff = np.diff(dates)
+        monotonic = np.all(diff >= np.timedelta64(0, "D")) or np.all(diff <= np.timedelta64(0, "D"))
+        if not monotonic:
+            raise ValueError("Dates must be monotonically increasing or decreasing")
 
         # Check if first date matches stored initial date
         if dates[0] != self.date:
