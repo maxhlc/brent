@@ -269,7 +269,7 @@ class ThalassaNumericalPropagator(Propagator):
         model.isun = pythalassa.SUN_ENABLED if model_.sun else pythalassa.SUN_DISABLED
         model.imoon = pythalassa.MOON_ENABLED if model_.moon else pythalassa.MOON_DISABLED
         # Set drag model
-        model.idrag = pythalassa.DRAG_DISABLED  # TODO: setup
+        model.idrag = pythalassa.DRAG_NRLMSISE00 if model_.drag else pythalassa.DRAG_DISABLED
         model.iF107 = pythalassa.FLUX_VARIABLE
         # Set SRP model
         model.iSRP = pythalassa.SRP_ENABLED_CONICAL if model_.srp else pythalassa.SRP_DISABLED
@@ -291,8 +291,8 @@ class ThalassaNumericalPropagator(Propagator):
         # Set mass
         spacecraft.mass = model_.mass
         # Set drag properties
-        spacecraft.area_drag = 0.0  # TODO: set
-        spacecraft.cd = 0.0  # TODO: set
+        spacecraft.area_drag = model_.area_drag
+        spacecraft.cd = model_.cd
         # Set SRP properties
         spacecraft.area_srp = model_.area_srp
         spacecraft.cr = model_.cr
