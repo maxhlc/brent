@@ -225,10 +225,6 @@ class ThalassaBatchLeastSquares:
             # Propagate states
             states_ = propagator.propagate(dates)
 
-            # Ensure propagator is destroyed before the next run
-            # NOTE: this is due to threading issues within THALASSA
-            del propagator
-
             # Return calculated states
             return (states_ - states).ravel()
 

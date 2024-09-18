@@ -9,7 +9,7 @@ class Constants:
     DEFAULT_IERSCONVENTIONS = IERSConventions.IERS_2010
 
     # Default Earth frames
-    DEFAULT_ECI = FramesFactory.getEME2000()
+    DEFAULT_ECI = FramesFactory.getGCRF()
     DEFAULT_ECEF = FramesFactory.getITRF(DEFAULT_IERSCONVENTIONS, True)
 
     # Default Earth properties
