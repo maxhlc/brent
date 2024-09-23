@@ -206,41 +206,43 @@ class ThalassaBatchLeastSquares:
         # Store covariance provider
         self.covarianceProvider = covarianceProvider
 
+    @staticmethod
+    def _residuals(
+        x: np.ndarray,
+        dates: np.ndarray | pd.DatetimeIndex,
+        states: np.ndarray,
+        model: NumericalPropagatorParameters,
+    ) -> np.ndarray:
+        # Extract initial date and state vector
+        dateInitial = dates[0]
+        stateInitial = np.array(x[0:6])
+
+        # Make a copy of the model parameters
+        model_ = deepcopy(model)
+
+        # Adjust model
+        if model_.srp_estimate and model_.drag_estimate:
+            model_.cr = x[6]
+            model_.drag = x[7]
+        elif model_.srp_estimate:
+            model_.cr = x[6]
+        elif model_.drag_estimate:
+            model_.drag = x[6]
+
+        # Create propagator
+        propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
+
+        # Propagate states
+        states_ = propagator.propagate(dates)
+
+        # Return calculated states
+        return (states_ - states).ravel()
+
     def estimate(self) -> ThalassaNumericalPropagator:
         # Extract the dates, states, and model
         dates = self.dates
         states = self.states
         model = self.model
-        srp_estimate = self.srp_estimate
-        drag_estimate = self.drag_estimate
-
-        # Extract the initial date
-        dateInitial = dates[0]
-
-        def fun(x):
-            # Extract initial state vector
-            stateInitial = np.array(x[0:6])
-
-            # Make a copy of the model parameters
-            model_ = deepcopy(model)
-
-            # Adjust model
-            if srp_estimate and drag_estimate:
-                model_.cr = x[6]
-                model_.drag = x[7]
-            elif srp_estimate:
-                model_.cr = x[6]
-            elif drag_estimate:
-                model_.drag = x[6]
-
-            # Create propagator
-            propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
-
-            # Propagate states
-            states_ = propagator.propagate(dates)
-
-            # Return calculated states
-            return (states_ - states).ravel()
 
         # Set initial guess
         x0 = states[0, :]
@@ -263,8 +265,9 @@ class ThalassaBatchLeastSquares:
         # Execute optimiser
         # TODO: consider switching to Jacobian scaling?
         sol = scipy.optimize.least_squares(
-            fun,
+            ThalassaBatchLeastSquares._residuals,
             x0,
+            args=(dates, states, model),
             method="lm",
             x_scale=x_scale,
         )
@@ -281,7 +284,7 @@ class ThalassaBatchLeastSquares:
         modelEstimated = self.getModel()
 
         # Return solution
-        return ThalassaNumericalPropagator(dateInitial, stateEstimated, modelEstimated)
+        return ThalassaNumericalPropagator(dates[0], stateEstimated, modelEstimated)
 
     def getCovariance(self) -> np.ndarray:
         # Return covariance matrix

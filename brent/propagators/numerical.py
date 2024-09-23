@@ -331,7 +331,7 @@ class ThalassaNumericalPropagator(Propagator):
         # Check requested frame is compatible with THALASSA
         if frame != FramesFactory.getGCRF():
             # TODO: check correct frame
-            raise ValueError("THALASSA only supports the EME2000 frame")
+            raise ValueError("THALASSA only supports GCRF")
 
         # Ensure dates increase/decrease monotonically
         diff = np.diff(dates)
