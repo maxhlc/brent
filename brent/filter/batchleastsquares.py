@@ -64,7 +64,7 @@ class OrekitBatchLeastSquares:
 
     def estimate(self) -> WrappedPropagator:
         # Generate estimate
-        self._estimate = NumericalPropagator.cast_(self.estimator.estimate()[0])
+        self._estimate: NumericalPropagator = NumericalPropagator.cast_(self.estimator.estimate()[0])
 
         # Execute fit propagator
         return WrappedPropagator(self._estimate)
@@ -114,6 +114,20 @@ class OrekitBatchLeastSquares:
 
         # Return Jacobian matrix
         return jacobian
+
+    def getEstimatedState(self) -> np.ndarray:
+        # Extract estimated state
+        state_ = self._estimate.getInitialState()
+
+        # Convert to NumPy vector
+        # TODO: specify frame?
+        pv = state_.getPVCoordinates()
+        pos = pv.getPosition().toArray()
+        vel = pv.getVelocity().toArray()
+        state = np.array(pos + vel)
+
+        # Return estimated state vector
+        return state
 
     def getCovariance(self) -> np.ndarray:
         # Extract estimated covariance
