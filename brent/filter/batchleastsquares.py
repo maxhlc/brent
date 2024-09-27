@@ -185,11 +185,8 @@ class ThalassaBatchLeastSquares:
         covarianceProvider: CovarianceProvider,
     ) -> None:
         # Store observation dates and states
-        self.dates = np.copy(dates)
+        self.dates = pd.to_datetime(np.copy(dates))
         self.states = np.copy(states)
-
-        # Ensure date type
-        self.dates = pd.to_datetime(self.dates)
 
         # Store model
         self.model = model
@@ -269,31 +266,37 @@ class ThalassaBatchLeastSquares:
         if self.drag_estimate:
             x0 = np.append(x0, model.cd)
 
-        # Calculate scaling units
-        r0 = np.linalg.norm(states[0, 0:3])
-        v0 = np.linalg.norm(states[0, 3:6])
-        lu = 1.0 / (2.0 / r0 - v0**2 / Constants.DEFAULT_MU)
-        vu = np.sqrt(Constants.DEFAULT_MU / lu)
-        x_scale = np.array([lu, lu, lu, vu, vu, vu])
-        if self.srp_estimate:
-            x_scale = np.append(x_scale, 0.01)
-        if self.drag_estimate:
-            x_scale = np.append(x_scale, 0.01)
+        # Calculate observation covariance
+        cov = self.covarianceProvider.covariance(states)
+
+        # Define function
+        def fun(_, *params):
+            # Calculate states
+            states = ThalassaBatchLeastSquares._propagate(
+                x=np.array(params),
+                dates=dates,
+                model=model,
+            )
+
+            # Return column vector of states
+            return states.ravel()
 
         # Execute optimiser
-        # TODO: consider switching to Jacobian scaling?
-        sol = scipy.optimize.least_squares(
-            ThalassaBatchLeastSquares._residuals,
+        x = dates
+        y = states.ravel()
+        popt, pcov = scipy.optimize.curve_fit(
+            fun,
+            x,  # Not used by function
+            y,
             x0,
-            args=(dates, states, model),
+            sigma=cov,
+            absolute_sigma=True,
             method="lm",
-            x_scale=x_scale,
         )
 
         # Store optimisation results
-        # TODO: estimate covariance with weights?
-        self.popt = sol.x
-        self.pcov = np.linalg.inv(sol.jac.T @ sol.jac)
+        self.popt = popt
+        self.pcov = pcov
 
         # Extract estimated state
         stateEstimated = self.getEstimatedState()
