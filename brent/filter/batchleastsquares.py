@@ -188,6 +188,9 @@ class ThalassaBatchLeastSquares:
         self.dates = np.copy(dates)
         self.states = np.copy(states)
 
+        # Ensure date type
+        self.dates = pd.to_datetime(self.dates)
+
         # Store model
         self.model = model
         self.srp_estimate = model.srp_estimate
@@ -209,8 +212,23 @@ class ThalassaBatchLeastSquares:
     @staticmethod
     def _residuals(
         x: np.ndarray,
-        dates: np.ndarray | pd.DatetimeIndex,
+        dates: pd.DatetimeIndex,
         states: np.ndarray,
+        model: NumericalPropagatorParameters,
+    ) -> np.ndarray:
+        # Calculate states
+        states_ = ThalassaBatchLeastSquares._propagate(x, dates, model)
+
+        # Calculate residuals
+        residuals = (states_ - states).ravel()
+
+        # Return residuals
+        return residuals
+
+    @staticmethod
+    def _propagate(
+        x: np.ndarray,
+        dates: pd.DatetimeIndex,
         model: NumericalPropagatorParameters,
     ) -> np.ndarray:
         # Extract initial date and state vector
@@ -233,10 +251,10 @@ class ThalassaBatchLeastSquares:
         propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
 
         # Propagate states
-        states_ = propagator.propagate(dates)
+        states = propagator.propagate(dates)
 
-        # Return calculated states
-        return (states_ - states).ravel()
+        # Return propagated states
+        return states
 
     def estimate(self) -> ThalassaNumericalPropagator:
         # Extract the dates, states, and model
