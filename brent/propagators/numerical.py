@@ -281,6 +281,7 @@ class ThalassaNumericalPropagator(Propagator):
         self.paths.phys_path = brent.paths.THALASSA_DATA_PHYSICAL
         self.paths.earth_path = brent.paths.THALASSA_DATA_EARTH
         self.paths.kernel_path = brent.paths.THALASSA_DATA_KERNEL
+        self.paths.eop_path = brent.paths.THALASSA_DATA_EOP
 
         # Declare settings
         # TODO: set

@@ -2,7 +2,6 @@
 import argparse
 import copy
 import json
-import os.path
 
 
 def main(input: str) -> None:
