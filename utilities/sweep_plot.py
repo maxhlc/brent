@@ -363,7 +363,11 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 
     # Check for midpoint results
     if "midPoint" not in df_.columns:
-        raise ValueError("Results do not include window midpoint. Older plotting tool may be required for these results.")
+        raise ValueError(
+            "Results do not include window midpoint."
+            + " "
+            + "Older plotting tool may be required for these results."
+        )
 
     # Bodges to allow plotting with older results
     if "fitDates" not in df_.columns:
@@ -385,7 +389,21 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     df_["testDaysPostFitEnd"] = df_.apply(func_testDates, axis=1)
 
     # Calculate position RMSE
-    df_["fitErrorRMS"] = df_["fitError"].apply(lambda x: np.sqrt(np.mean(x**2)))
+    def rmse_func(series):
+        # Extract window end and test dates
+        fitEnd = series["fitEnd"]
+        testDates = series["testDates"]
+
+        # Extract post-fit indices
+        idx = testDates >= fitEnd
+
+        # Extract fit position errors
+        fitError = series["fitError"]
+
+        # Return post-fit position RMSE
+        return np.sqrt(np.mean(fitError[idx] ** 2))
+
+    df_["fitErrorRMS"] = df_.apply(rmse_func, axis=1)
 
     # Calculate error difference
     df_["errorDiff"] = df_["fitError"] - df_["sampleError"]
