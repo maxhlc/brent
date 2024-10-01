@@ -328,7 +328,53 @@ class ThalassaNumericalPropagator(Propagator):
         # Put states onto results queue
         results.put(states)
 
+    def _get_process(
+        self,
+        results: mp.Queue,
+        dates: pd.DatetimeIndex,
+        state: np.ndarray,
+    ) -> mp.Process:
+        # Return propagation process
+        return mp.Process(
+            target=ThalassaNumericalPropagator._propagate,
+            args=(
+                results,
+                self.model,
+                self.paths,
+                self.settings,
+                self.spacecraft,
+                dates,
+                state,
+            ),
+        )
+
+    @staticmethod
+    def _run_process(
+        results: mp.Queue,
+        process: mp.Process,
+        timeout: float,
+    ) -> np.ndarray:
+        # Try to propagate
+        try:
+            # Start propagation
+            process.start()
+
+            # Wait for results
+            states = results.get(timeout=timeout)
+        except queue.Empty:
+            # Raise error due to lack of results
+            raise RuntimeError("Propagation timed out")
+        finally:
+            # Ensure process is terminated
+            process.terminate()
+
+        # Return propagated states
+        return states
+
     def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 600.0):
+        # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
+        #       creating and destroying large numbers of propagators using SPICE kernels
+
         # Check requested frame is compatible with THALASSA
         if frame != FramesFactory.getGCRF():
             # TODO: check correct frame
@@ -348,38 +394,14 @@ class ThalassaNumericalPropagator(Propagator):
             # Use stored initial state
             state = self.state
 
-        # Propagate states
-        # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
-        #       creating and destroying large numbers of propagators using SPICE kernels
+        # Create results queue
         results = mp.Queue()
 
         # Create propagation process
-        process = mp.Process(
-            target=ThalassaNumericalPropagator._propagate,
-            args=(
-                results,
-                self.model,
-                self.paths,
-                self.settings,
-                self.spacecraft,
-                dates,
-                state,
-            ),
-        )
+        process = self._get_process(results, dates, state)
 
-        # Try to propagate
-        try:
-            # Start propagation
-            process.start()
-
-            # Wait for results
-            states = results.get(timeout=timeout)
-        except queue.Empty:
-            # Raise error due to lack of results
-            raise RuntimeError("Propagation timed out")
-        finally:
-            # Ensure process is terminated
-            process.terminate()
+        # Propagate
+        states = ThalassaNumericalPropagator._run_process(results, process, timeout)
 
         # Return states
         return states
