@@ -41,6 +41,16 @@ class OrekitBatchLeastSquares:
         # Store model
         self.model = model
 
+        # Throw error if SRP estimation enabled without SRP
+        # TODO: force enable SRP?
+        if model.srp_estimate and not model.srp:
+            raise ValueError("Cannot estimate SRP if disabled in model")
+
+        # Throw error if drag estimation enabled without drag
+        # TODO: force enable drag?
+        if model.drag_estimate and not model.drag:
+            raise ValueError("Cannot estimate drag if disabled in model")
+
         # Create builder
         builder = OrekitNumericalPropagator.builder(dates[0], states[0, :], model)
 
