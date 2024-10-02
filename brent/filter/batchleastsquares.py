@@ -270,11 +270,11 @@ class ThalassaBatchLeastSquares:
         model = self.model
 
         # Set initial guess
-        x0 = states[0, :]
+        p0 = states[0, :]
         if self.srp_estimate:
-            x0 = np.append(x0, model.cr)
+            p0 = np.append(p0, model.cr)
         if self.drag_estimate:
-            x0 = np.append(x0, model.cd)
+            p0 = np.append(p0, model.cd)
 
         # Calculate observation covariance
         cov = self.covarianceProvider.covariance(states)
@@ -298,7 +298,7 @@ class ThalassaBatchLeastSquares:
             fun,
             x,  # Not used by function
             y,
-            x0,
+            p0,
             sigma=cov,
             absolute_sigma=True,
             method="lm",
