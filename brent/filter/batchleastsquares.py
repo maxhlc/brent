@@ -218,13 +218,13 @@ class ThalassaBatchLeastSquares:
 
     @staticmethod
     def _residuals(
-        x: np.ndarray,
+        params: np.ndarray,
         dates: pd.DatetimeIndex,
         states: np.ndarray,
         model: NumericalPropagatorParameters,
     ) -> np.ndarray:
         # Calculate states
-        states_ = ThalassaBatchLeastSquares._propagate(x, dates, model)
+        states_ = ThalassaBatchLeastSquares._propagate(params, dates, states, model)
 
         # Calculate residuals
         residuals = (states_ - states).ravel()
@@ -234,28 +234,28 @@ class ThalassaBatchLeastSquares:
 
     @staticmethod
     def _propagate(
-        x: np.ndarray,
+        params: np.ndarray,
         dates: pd.DatetimeIndex,
+        states: np.ndarray,
         model: NumericalPropagatorParameters,
     ) -> np.ndarray:
-        # Extract initial date and state vector
-        dateInitial = dates[0]
-        stateInitial = np.array(x[0:6])
+        # Extract initial state vector
+        state = params[0:6]
 
         # Make a copy of the model parameters
         model_ = deepcopy(model)
 
         # Adjust model
         if model_.srp_estimate and model_.drag_estimate:
-            model_.cr = x[6]
-            model_.drag = x[7]
+            model_.cr = params[6]
+            model_.drag = params[7]
         elif model_.srp_estimate:
-            model_.cr = x[6]
+            model_.cr = params[6]
         elif model_.drag_estimate:
-            model_.drag = x[6]
+            model_.drag = params[6]
 
         # Create propagator
-        propagator = ThalassaNumericalPropagator(dateInitial, stateInitial, model_)
+        propagator = ThalassaNumericalPropagator(dates[0], state, model_)
 
         # Propagate states
         states = propagator.propagate(dates)
@@ -282,14 +282,15 @@ class ThalassaBatchLeastSquares:
         # Define function
         def fun(_, *params):
             # Calculate states
-            states = ThalassaBatchLeastSquares._propagate(
-                x=np.array(params),
+            states_ = ThalassaBatchLeastSquares._propagate(
+                params=np.array(params),
                 dates=dates,
+                states=states,
                 model=model,
             )
 
             # Return column vector of states
-            return states.ravel()
+            return states_.ravel()
 
         # Execute optimiser
         x = dates
