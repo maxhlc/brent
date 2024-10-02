@@ -286,8 +286,8 @@ class ThalassaNumericalPropagator(Propagator):
         # Declare settings
         # TODO: set
         self.settings = pythalassa.Settings()
-        self.settings.eqs = pythalassa.EDROMO_T  # TODO: add options for different methods?
-        self.settings.tol = 1e-14
+        self.settings.eqs = pythalassa.EDROMO_C  # TODO: add options for different methods?
+        self.settings.tol = 1e-10
 
         # Declare spacecraft
         self.spacecraft = pythalassa.Spacecraft()
