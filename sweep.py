@@ -260,10 +260,10 @@ def fit(spacecraft, parameters):
     fitPropagator = filter.estimate()
 
     # Get estimated covariance
-    fitCovariance = filter.getCovariance()[0:6, 0:6]
+    fitCovariance = filter.getEstimatedCovariance()[0:6, 0:6]
 
     # Get estimated model
-    modelEstimated = filter.getModel()
+    modelEstimated = filter.getEstimatedModel()
 
     # Generate fit states
     fitStates = fitPropagator.propagate(fitDates)

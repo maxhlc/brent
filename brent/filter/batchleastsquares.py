@@ -1,4 +1,5 @@
 # Standard imports
+from abc import ABC, abstractmethod
 from copy import deepcopy
 
 # Third-party imports
@@ -18,6 +19,7 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 from .covariance import CovarianceProvider
 from .observations import generate_observations
 from brent.propagators import (
+    Propagator,
     WrappedPropagator,
     OrekitNumericalPropagator,
     ThalassaNumericalPropagator,
@@ -25,7 +27,22 @@ from brent.propagators import (
 )
 
 
-class OrekitBatchLeastSquares:
+class BatchLeastSquares(ABC):
+
+    @abstractmethod
+    def estimate(self) -> Propagator: ...
+
+    @abstractmethod
+    def getEstimatedState(self) -> np.ndarray: ...
+
+    @abstractmethod
+    def getEstimatedCovariance(self) -> np.ndarray: ...
+
+    @abstractmethod
+    def getEstimatedModel(self) -> NumericalPropagatorParameters: ...
+
+
+class OrekitBatchLeastSquares(BatchLeastSquares):
     def __init__(
         self,
         dates: np.ndarray | pd.DatetimeIndex,
@@ -93,7 +110,7 @@ class OrekitBatchLeastSquares:
         # Return estimated state vector
         return state
 
-    def getCovariance(self) -> np.ndarray:
+    def getEstimatedCovariance(self) -> np.ndarray:
         # Extract estimated covariance
         covariance_ = self.estimator.getPhysicalCovariances(1e-16)
 
@@ -105,7 +122,7 @@ class OrekitBatchLeastSquares:
         # Return fit covariance
         return covariance
 
-    def getModel(self) -> NumericalPropagatorParameters:
+    def getEstimatedModel(self) -> NumericalPropagatorParameters:
         # Extract estimated model
         model = deepcopy(self.model)
 
@@ -139,7 +156,7 @@ class OrekitBatchLeastSquares:
         return model
 
 
-class ThalassaBatchLeastSquares:
+class ThalassaBatchLeastSquares(BatchLeastSquares):
 
     def __init__(
         self,
@@ -269,12 +286,12 @@ class ThalassaBatchLeastSquares:
         stateEstimated = self.getEstimatedState()
 
         # Extract estimated model
-        modelEstimated = self.getModel()
+        modelEstimated = self.getEstimatedModel()
 
         # Return solution
         return ThalassaNumericalPropagator(dates[0], stateEstimated, modelEstimated)
 
-    def getCovariance(self) -> np.ndarray:
+    def getEstimatedCovariance(self) -> np.ndarray:
         # Return covariance matrix
         return self.pcov
 
@@ -282,7 +299,7 @@ class ThalassaBatchLeastSquares:
         # Return estimated state
         return self.popt[0:6]
 
-    def getModel(self) -> NumericalPropagatorParameters:
+    def getEstimatedModel(self) -> NumericalPropagatorParameters:
         # Extract optimisation results
         popt = self.popt
 
