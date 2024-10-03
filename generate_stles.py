@@ -291,11 +291,11 @@ def main(parameters: Parameters) -> None:
     deltaStatesSTLE = statesSTLE - statesSP3
 
     # Calculate RTN transformations
-    RTN = brent.frames.rtn(statesSP3)
+    rtn = brent.frames.RTN.getTransform(statesSP3)
 
     # Calculate RTN errors
-    deltaStatesTLERTN = np.einsum("ijk,ik -> ij", RTN, deltaStatesTLE)
-    deltaStatesSTLERTN = np.einsum("ijk,ik -> ij", RTN, deltaStatesSTLE)
+    deltaStatesTLERTN = brent.frames.RTN.transform(rtn, deltaStatesTLE)
+    deltaStatesSTLERTN = brent.frames.RTN.transform(rtn, deltaStatesSTLE)
 
     # Plot along-track angular errors
     plt.figure()

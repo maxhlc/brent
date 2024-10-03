@@ -267,17 +267,17 @@ def fit(spacecraft, parameters):
     fitStates = fitPropagator.propagate(fitDates)
 
     # Calculate RTN transformations
-    RTN = brent.frames.rtn(fitStates)
+    rtn = brent.frames.RTN.getTransform(fitStates)
 
     # Transform fit covariance to RTN
-    fitCovarianceRTN = RTN[0, :, :] @ fitCovariance @ RTN[0, :, :].T
+    fitCovarianceRTN = rtn[0, :, :] @ fitCovariance @ rtn[0, :, :].T
 
     # Calculate state residuals
     # TODO: check order
     deltaStates = sampleStates - fitStates
 
     # Transform state residuals to RTN
-    deltaStatesRTN = np.einsum("ijk,ik -> ij", RTN, deltaStates)
+    deltaStatesRTN = brent.frames.RTN.transform(rtn, deltaStates)
 
     # Calculate residual sample covariances
     residualCovariance = np.cov(deltaStates, rowvar=False)

@@ -36,7 +36,7 @@ class RTNCovarianceProvider(CovarianceProvider):
     def _covariance(self, state: np.ndarray) -> np.ndarray:
         # Calculate RTN transform
         # TODO: vectorise for multiple states?
-        rtn = brent.frames.rtn(state.reshape((1, 6)))[0, :, :]
+        rtn = brent.frames.RTN.getTransform(state.reshape((1, 6)))[0, :, :]
 
         # Rotate covariance matrix to inertial frame
         covarianceXYZ = rtn.T @ self.covarianceRTN @ rtn

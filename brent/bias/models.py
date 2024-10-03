@@ -46,8 +46,7 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
         rmag = np.linalg.norm(states[:, 0:3], axis=1)
 
         # Find RTN transform
-        RTN = brent.frames.rtn(states)
-        RTNt = RTN.swapaxes(1, 2)
+        rtn = brent.frames.RTN.getTransform(states)
 
         # Calculate offset dates
         dfunc = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
@@ -58,7 +57,7 @@ class SimplifiedAlongtrackSinusoidal(BiasModel):
         bias_RTN[:, 1] = self.__model(t) * rmag
 
         # Rotate to inertial frame
-        bias = np.einsum("ijk,ik -> ij", RTNt, bias_RTN)
+        bias = brent.frames.RTN.transform(rtn, bias_RTN, reverse=True)
 
         # Return biases
         return bias

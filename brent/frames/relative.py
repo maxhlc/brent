@@ -2,28 +2,43 @@
 import numpy as np
 
 
-def rtn(states):
-    # Extract reference position and velocity vectors
-    rRef = states[:, 0:3]
-    vRef = states[:, 3:6]
+class RTN:
 
-    # Calculate reference angular momentum vectors
-    hRef = np.cross(rRef, vRef)
+    @staticmethod
+    def getTransform(states: np.ndarray) -> np.ndarray:
+        # Extract reference position and velocity vectors
+        rRef = states[:, 0:3]
+        vRef = states[:, 3:6]
 
-    # Calculate magnitudes
-    rRefMag = np.linalg.norm(rRef, axis=1, keepdims=True)
-    hRefMag = np.linalg.norm(hRef, axis=1, keepdims=True)
+        # Calculate reference angular momentum vectors
+        hRef = np.cross(rRef, vRef)
 
-    # Calculate RTN components
-    R = rRef / rRefMag
-    N = hRef / hRefMag
-    T = np.cross(N, R)
+        # Calculate magnitudes
+        rRefMag = np.linalg.norm(rRef, axis=1, keepdims=True)
+        hRefMag = np.linalg.norm(hRef, axis=1, keepdims=True)
 
-    # Create RTN matrix
-    RTN = np.stack((R, T, N), axis=1)
+        # Calculate RTN components
+        r = rRef / rRefMag
+        n = hRef / hRefMag
+        t = np.cross(n, r)
 
-    # Expand matrix for combined position and velocity rotation
-    RTN = np.kron(np.eye(2, dtype=int), RTN)
+        # Create RTN matrix
+        rtn = np.stack((r, t, n), axis=1)
 
-    # Return transformation matrix
-    return RTN
+        # Expand matrix for combined position and velocity rotation
+        rtn = np.kron(np.eye(2, dtype=int), rtn)
+
+        # Return transformation matrix
+        return rtn
+
+    @staticmethod
+    def transform(
+        matrix: np.ndarray,
+        vectors: np.ndarray,
+        reverse: bool = False,
+    ) -> np.ndarray:
+        # Reverse transformation (if specified)
+        matrix_ = matrix if not reverse else matrix.swapaxes(1, 2)
+
+        # Return transformed vectors
+        return np.einsum("ijk,ik -> ij", matrix_, vectors)
