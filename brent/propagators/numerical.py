@@ -200,7 +200,7 @@ class OrekitNumericalPropagator(WrappedPropagator):
             # Enable CD estimation
             if model.drag_estimate:
                 # Iterate through drivers
-                for driver in srp.getParametersDrivers():
+                for driver in drag.getParametersDrivers():
                     # Enable drag driver
                     if driver.getName() == DragSensitive.DRAG_COEFFICIENT:
                         driver.setSelected(True)
