@@ -1,3 +1,7 @@
+# Standard imports
+from datetime import datetime
+from typing import List
+
 # Third-party imports
 import numpy as np
 import pandas as pd
@@ -5,6 +9,7 @@ import pandas as pd
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
+from org.orekit.frames import Frame
 from org.orekit.orbits import EquinoctialOrbit, PositionAngleType
 from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
@@ -13,16 +18,30 @@ from org.hipparchus.geometry.euclidean.threed import Vector3D
 from brent import Constants
 
 
-def cartesian_to_equinoctial(
-    dates,
-    states,
-    mu=Constants.DEFAULT_MU,
-    frame=Constants.DEFAULT_ECI,
-):
-    def _cartesian_to_equinoctial(date, state):
-        if isinstance(date, np.datetime64):
-            date = pd.Timestamp(date)
+class Equinoctial:
 
+    @staticmethod
+    def from_cartesian(
+        dates: List[datetime] | pd.DatetimeIndex,
+        states: np.ndarray,
+        mu: float = Constants.DEFAULT_MU,
+        frame: Frame = Constants.DEFAULT_ECI,
+    ) -> np.ndarray:
+        # Return Equinoctial elementss
+        return np.array(
+            [
+                Equinoctial._from_cartesian(date, state, mu, frame)
+                for date, state in zip(dates, states)
+            ]
+        )
+
+    @staticmethod
+    def _from_cartesian(
+        date: datetime | pd.Timestamp,
+        state: np.ndarray,
+        mu: float = Constants.DEFAULT_MU,
+        frame: Frame = Constants.DEFAULT_ECI,
+    ) -> np.ndarray:
         # Convert date and state to Orekit format
         dat = datetime_to_absolutedate(date)
         pos = Vector3D(*state[0:3].tolist())
@@ -44,24 +63,30 @@ def cartesian_to_equinoctial(
         lm = equinoctial.getLM()
 
         # Return extracted Equinoctial elements
-        return [a, ex, ey, hx, hy, lm]
+        return np.array([a, ex, ey, hx, hy, lm])
 
-    # Return Equinoctial elements
-    return np.array(
-        [_cartesian_to_equinoctial(date, state) for date, state in zip(dates, states)]
-    )
+    @staticmethod
+    def to_cartesian(
+        dates: List[datetime] | pd.DatetimeIndex,
+        states: np.ndarray,
+        mu: float = Constants.DEFAULT_MU,
+        frame: Frame = Constants.DEFAULT_ECI,
+    ):
+        # Return Cartesian states
+        return np.array(
+            [
+                Equinoctial._to_cartesian(date, state, mu, frame)
+                for date, state in zip(dates, states)
+            ]
+        )
 
-
-def equinoctial_to_cartesian(
-    dates,
-    states,
-    mu=Constants.DEFAULT_MU,
-    frame=Constants.DEFAULT_ECI,
-):
-    def _equinoctial_to_cartesian(date, state):
-        if isinstance(date, np.datetime64):
-            date = pd.Timestamp(date)
-
+    @staticmethod
+    def _to_cartesian(
+        date: datetime | pd.Timestamp,
+        state: np.ndarray,
+        mu: float = Constants.DEFAULT_MU,
+        frame: Frame = Constants.DEFAULT_ECI,
+    ):
         # Convert date to Orekit format
         dat = datetime_to_absolutedate(date)
 
@@ -98,8 +123,3 @@ def equinoctial_to_cartesian(
 
         # Return extracted Cartesian state
         return np.array([*pos, *vel])
-
-    # Return Cartesian states
-    return np.array(
-        [_equinoctial_to_cartesian(date, state) for date, state in zip(dates, states)]
-    )
