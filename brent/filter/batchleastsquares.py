@@ -17,7 +17,6 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 # Internal imports
 from .covariance import CovarianceProvider
 from .observations import generate_observations
-from brent import Constants
 from brent.propagators import (
     WrappedPropagator,
     OrekitNumericalPropagator,
@@ -278,7 +277,9 @@ class ThalassaBatchLeastSquares:
             p0 = np.append(p0, model.cd)
 
         # Calculate observation covariance
-        cov = self.covarianceProvider.covariance(states)
+        # NOTE: only using the diagonal terms, matching generate_observations
+        covariance = self.covarianceProvider.covariance(states)
+        covarianceDiagonal = np.diag(np.diag(covariance))
 
         # Define function
         def fun(_, *params):
@@ -301,7 +302,7 @@ class ThalassaBatchLeastSquares:
             x,  # Not used by function
             y,
             p0,
-            sigma=cov,
+            sigma=covarianceDiagonal,
             absolute_sigma=True,
             method="lm",
         )
