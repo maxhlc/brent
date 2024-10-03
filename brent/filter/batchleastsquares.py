@@ -74,7 +74,8 @@ class OrekitBatchLeastSquares:
 
     def estimate(self) -> WrappedPropagator:
         # Generate estimate
-        self._estimate: NumericalPropagator = NumericalPropagator.cast_(self.estimator.estimate()[0])
+        self._estimate: NumericalPropagator
+        self._estimate = NumericalPropagator.cast_(self.estimator.estimate()[0])
 
         # Execute fit propagator
         return WrappedPropagator(self._estimate)
