@@ -253,6 +253,8 @@ def fit(spacecraft, parameters):
             model,
             covarianceProvider,
         )
+    else:
+        raise ValueError(f"Unknown propagator: {propagator}")
 
     # Execute filter
     fitPropagator = filter.estimate()
