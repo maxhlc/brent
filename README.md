@@ -34,7 +34,15 @@ cmake --build ./external/thalassa/build
 
 It is recommended to execute these within the conda environment to ensure that the Python bindings are compatible with the environment's version of Python.
 
-By default, BRENT uses THALASSA's simple ephemerides for lunisolar perturbations, therefore additional data files (e.g., SPICE kernels) do not need to be downloaded.
+By default, BRENT uses SPICE kernels with THALASSA lunisolar perturbations, therefore the following files must be placed into the `./data/kernels/` directory:
+* `de431_part-1.bsp`
+* `de431_part-2.bsp`
+* `gm_de431.tpc`
+* `naif0012.tls`
+
+A script for downloading the kernel files is provided by THALASSA (`./external/thalassa/data/kernels/kernels.sh`).
+
+NOTE: SPICE kernels are loaded relative to the current working directory, unlike the Orekit data files which are loaded with absolute filepaths.
 
 ### Usage
 
