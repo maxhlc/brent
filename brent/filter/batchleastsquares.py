@@ -79,52 +79,6 @@ class OrekitBatchLeastSquares:
         # Execute fit propagator
         return WrappedPropagator(self._estimate)
 
-    def _jacobian(self) -> np.ndarray:
-        # Extract weighted Jacobian matrix from the estimator
-        jacobian_ = self.estimator.getOptimum().getJacobian()
-
-        # Return Jacobian matrix
-        return np.array(
-            [jacobian_.getRow(irow) for irow in range(jacobian_.getRowDimension())]
-        )
-
-    def _scale_factors(self) -> np.ndarray:
-        # Extract parameter drivers
-        # TODO: account for additional drivers (e.g. SRP estimation, etc.)
-        drivers_ = self.estimator.getOrbitalParametersDrivers(False)
-        drivers = [
-            ParameterDriver.cast_(drivers_.getDrivers().get(idx))
-            for idx in range(drivers_.getNbParams())
-        ]
-
-        # Extract scaling factors
-        # NOTE: assumes order is the same as in the Jacobian
-        scales = np.array([driver.getScale() for driver in drivers])
-
-        # Return scaling factors
-        return scales
-
-    def jacobian(self) -> np.ndarray:
-        # Prevent execution
-        # TODO: finish implementation
-        raise NotImplementedError
-
-        # Extract weighted Jacobian matrix
-        # TODO: figure out how to remove the weighting!
-        jacobian = self._jacobian()
-
-        # Extract scaling factors
-        scales = self._scale_factors()
-        scaling_matrix = scales.reshape((1, -1)) / scales.reshape((-1, 1))
-
-        # Scale Jacobian matrix to physical dimensions
-        n = jacobian.shape[0] // scaling_matrix.shape[0]
-        scaling_matrix_tiled = np.tile(scaling_matrix, (n, 1))
-        jacobian /= scaling_matrix_tiled
-
-        # Return Jacobian matrix
-        return jacobian
-
     def getEstimatedState(self) -> np.ndarray:
         # Extract estimated state
         state_ = self._estimate.getInitialState()
