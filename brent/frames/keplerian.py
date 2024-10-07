@@ -103,7 +103,7 @@ class Keplerian:
 
         # Create Keplerian representation
         # TODO: angle type as input
-        kep = KeplerianOrbit(
+        keplerian = KeplerianOrbit(
             a,
             e,
             i,
@@ -117,7 +117,7 @@ class Keplerian:
         )
 
         # Extract position and velocity
-        pv = kep.getPVCoordinates()
+        pv = keplerian.getPVCoordinates()
         pos = pv.getPosition().toArray()
         vel = pv.getVelocity().toArray()
 
