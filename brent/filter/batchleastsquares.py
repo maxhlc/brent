@@ -276,7 +276,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         idx = np.diag_indices_from(covarianceDiagonal)
         covarianceDiagonal[idx] /= np.tile(rscale**2, len(dates))
 
-        # Define function
+        # Define predictor function
         def fun(_, *p):
             # Scale parameters (non-dimensional to dimensional)
             params = np.array(p) * pscale
@@ -295,6 +295,28 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             # Return column vector of states
             return states_.ravel()
 
+        # Define Jacobian function
+        def jac(_, *p, eps=2e-16):
+            # Calculate perturbation vector
+            x = np.array(p)
+            dx = np.sqrt(eps) * np.abs(x)
+            dx[dx < 1e-16] = 1e-16
+
+            # Generate perturbations matrix
+            x_ = x + np.diag(dx)
+
+            # Calculate reference result
+            r0 = fun(_, *x)
+
+            # Calculate perturbed results
+            rp = np.column_stack([fun(_, *ix) for ix in x_])
+
+            # Calculate first-order finite difference
+            dfdx = (rp - r0.reshape((-1, 1))) / dx.reshape((1, -1))
+
+            # Return Jacobian matrix
+            return dfdx
+
         # Extract (and scale) observations
         x = dates
         y = states / rscale.reshape((1, -1))
@@ -307,6 +329,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             x,  # Not used by function
             y,
             p0,
+            jac=jac,
             sigma=covarianceDiagonal,
             absolute_sigma=True,
             method="lm",
