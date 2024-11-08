@@ -18,6 +18,8 @@ from org.hipparchus.optim.nonlinear.vector.leastsquares import GaussNewtonOptimi
 # Internal imports
 from .covariance import CovarianceProvider
 from .observations import generate_observations
+from brent.constants import Constants
+from brent.frames import Keplerian
 from brent.propagators import (
     Propagator,
     WrappedPropagator,
@@ -240,34 +242,66 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         states = self.states
         model = self.model
 
+        # Calculate scaling units
+        keplerian = Keplerian.from_cartesian(dates[0:1], states[0:1, :])
+        mu = Constants.DEFAULT_MU
+        lu = keplerian[0, 0]
+        vu = np.sqrt(mu / lu)
+
+        # Calculate parameter scaling vector
+        pscale = np.array(3 * [lu] + 3 * [vu])
+        if self.srp_estimate:
+            pscale = np.append(pscale, 1e-6)
+        if self.drag_estimate:
+            pscale = np.append(pscale, 1.0)  # TODO: update
+
+        # Calculate residual scaling vector
+        rscale = pscale[0:6]
+
         # Set initial guess
+        # TODO: ratios (e.g. CR * A / m) instead of the coefficient alone
         p0 = states[0, :]
         if self.srp_estimate:
             p0 = np.append(p0, model.cr)
         if self.drag_estimate:
             p0 = np.append(p0, model.cd)
+        p0 /= pscale
 
         # Calculate observation covariance
-        # NOTE: only using the diagonal terms, matching generate_observations
         covariance = self.covarianceProvider.covariance(states)
+
+        # Extract diagonal covariance matrix (and scale)
+        # NOTE: only using the diagonal terms, matching generate_observations
         covarianceDiagonal = np.diag(np.diag(covariance))
+        idx = np.diag_indices_from(covarianceDiagonal)
+        covarianceDiagonal[idx] /= np.tile(rscale**2, len(dates))
 
         # Define function
-        def fun(_, *params):
+        def fun(_, *p):
+            # Scale parameters (non-dimensional to dimensional)
+            params = np.array(p) * pscale
+
             # Calculate states
             states_ = ThalassaBatchLeastSquares._propagate(
-                params=np.array(params),
+                params=params,
                 dates=dates,
                 states=states,
                 model=model,
             )
 
+            # Scale states (dimensional to non-dimensional)
+            states_ /= rscale.reshape((1, -1))
+
             # Return column vector of states
             return states_.ravel()
 
-        # Execute optimiser
+        # Extract (and scale) observations
         x = dates
-        y = states.ravel()
+        y = states / rscale.reshape((1, -1))
+        y = y.ravel()
+
+        # Execute optimiser
+        # TODO: parallel Jacobian
         popt, pcov = scipy.optimize.curve_fit(
             fun,
             x,  # Not used by function
@@ -278,7 +312,9 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             method="lm",
         )
 
-        # Store optimisation results
+        # Store optimisation scaling and results
+        self.pscale = pscale
+        self.rscale = rscale
         self.popt = popt
         self.pcov = pcov
 
@@ -292,26 +328,39 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         return ThalassaNumericalPropagator(dates[0], stateEstimated, modelEstimated)
 
     def getEstimatedCovariance(self) -> np.ndarray:
+        # Extract optimisation results
+        pcov = self.pcov
+        pscale = self.pscale
+
+        # Generate scaling matrix
+        pscaleMatrix = pscale.reshape((1, -1)) * pscale.reshape((-1, 1))
+
         # Return covariance matrix
-        return self.pcov
+        return pcov * pscaleMatrix
 
     def getEstimatedState(self) -> np.ndarray:
+        # Extract optimisation results
+        popt = self.popt
+        pscale = self.pscale
+
         # Return estimated state
-        return self.popt[0:6]
+        return popt[0:6] * pscale[0:6]
 
     def getEstimatedModel(self) -> NumericalPropagatorParameters:
         # Extract optimisation results
         popt = self.popt
+        pscale = self.pscale
 
         # Extract estimated model
+        # TODO: cleaner solution
         model = deepcopy(self.model)
         if self.srp_estimate and self.drag_estimate:
-            model.cr = popt[6]
-            model.cd = popt[7]
+            model.cr = popt[6] * pscale[6]
+            model.cd = popt[7] * pscale[7]
         elif self.srp_estimate:
-            model.cr = popt[6]
+            model.cr = popt[6] * pscale[6]
         elif self.drag_estimate:
-            model.drag = popt[6]
+            model.drag = popt[6] * pscale[6]
 
         # Return estimated model
         return model
