@@ -382,7 +382,11 @@ class ThalassaNumericalPropagator(Propagator):
 
         # Ensure dates increase/decrease monotonically
         diff = np.diff(dates)
-        monotonic = np.all(diff >= np.timedelta64(0, "D")) or np.all(diff <= np.timedelta64(0, "D"))
+        monotonic = np.all(
+            diff >= np.timedelta64(0, "D"),
+        ) or np.all(
+            diff <= np.timedelta64(0, "D"),
+        )
         if not monotonic:
             raise ValueError("Dates must be monotonically increasing or decreasing")
 
