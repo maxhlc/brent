@@ -336,7 +336,12 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             return results
 
         # Define Jacobian function
-        def jac(_, *p, eps=2e-16):
+        def jac(
+            _,
+            *p,
+            eps: float = 2e-16,
+            parallel: bool = False,
+        ) -> np.ndarray:
             # Calculate perturbation vector
             x = np.array(p)
             dx = np.sqrt(eps) * np.abs(x)
@@ -345,11 +350,14 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             # Generate perturbations matrix
             x_ = x + np.diag(dx)
 
-            # Create overall input matrix 
+            # Create overall input matrix
             xs = np.vstack((x, x_))
 
             # Calculate reference and perturbed results
-            rs = fun_parallel(xs)
+            if parallel:
+                rs = fun_parallel(xs)
+            else:
+                rs = [fun(_, *ix) for ix in xs]
 
             # Split reference and perturbed results
             r0 = rs[0].reshape((-1, 1))
