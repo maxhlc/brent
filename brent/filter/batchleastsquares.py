@@ -380,7 +380,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             x,  # Not used by function
             y,
             p0,
-            jac=jac,
+            # jac=jac,
             sigma=covarianceDiagonal,
             absolute_sigma=True,
             method="lm",
