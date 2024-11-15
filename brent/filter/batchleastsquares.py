@@ -253,7 +253,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         # Calculate parameter scaling vector
         pscale = np.array(3 * [lu] + 3 * [vu])
         if self.srp_estimate:
-            pscale = np.append(pscale, 1e-6)
+            pscale = np.append(pscale, 1e-2)
         if self.drag_estimate:
             pscale = np.append(pscale, 1.0)  # TODO: update
 
