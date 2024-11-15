@@ -2,17 +2,18 @@
     "times": {
         "start": "2022-01-01",
         "end": "2023-01-01",
-        "frequency": 2,
-        "duration": [
+        "period": 2,
+        "fitDuration": [
             2,
             4,
             6,
             8,
             10
         ],
-        "samples": [
+        "fitSamples": [
             100
-        ]
+        ],
+        "testDuration": 90
     },
     "propagator": "orekit",
     "model": {
@@ -48,7 +49,7 @@
             "model": {
                 "mass": 406.965,
                 "area_srp": 0.282743338,
-                "area_drag":  0.282743338
+                "area_drag": 0.282743338
             },
             "bias": {
                 "model": "simplifiedalongtracksinusoidal",

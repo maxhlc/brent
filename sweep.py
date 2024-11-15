@@ -133,9 +133,10 @@ def load(fpath):
     dateformat = "%Y-%m-%d"
     start = datetime.strptime(times["start"], dateformat)
     end = datetime.strptime(times["end"], dateformat)
-    frequency = f"{times['frequency']}D"
-    duration = [timedelta(iduration) for iduration in times["duration"]]
-    samples = times["samples"]
+    period = f"{times['period']}D"
+    testDuration = timedelta(times["testDuration"])
+    fitDuration = [timedelta(iduration) for iduration in times["fitDuration"]]
+    fitSamples = times["fitSamples"]
 
     # Extract propagator
     propagator = arguments_raw["propagator"]
@@ -165,7 +166,7 @@ def load(fpath):
     start_ = pd.DatetimeIndex(
         np.unique(
             np.append(
-                pd.date_range(start, end, freq=frequency),
+                pd.date_range(start, end, freq=period),
                 pd.DatetimeIndex([end]),
             ),
         ),
@@ -174,10 +175,11 @@ def load(fpath):
     # Store arguments
     arguments = {
         "midPoint": start_,
-        "duration": duration,
-        "samples": samples,
+        "fitDuration": fitDuration,
+        "fitSamples": fitSamples,
         "propagator": [propagator],
         "noise": [noise],
+        "testDuration": [testDuration],
     }
 
     # Return spacecraft and arguments
@@ -186,22 +188,22 @@ def load(fpath):
 
 def fit(spacecraft, parameters):
     # Extract number of samples
-    samples = parameters["samples"]
+    fitSamples = parameters["fitSamples"]
 
     ## Extract dates
     # Fit
-    fitDuration = parameters["duration"]
+    fitDuration = parameters["fitDuration"]
     fitMidPoint = parameters["midPoint"]
     fitStartDate = fitMidPoint - fitDuration / 2
     fitEndDate = fitMidPoint + fitDuration / 2
     # Test
     testStartDate = fitStartDate
-    testDuration = fitDuration + timedelta(30)
+    testDuration = fitDuration + parameters["testDuration"]  # TODO: rename?
     testEndDate = testStartDate + testDuration
 
     # Generate dates
     # TODO: set sampling technique, testing duration
-    fitDates = pd.date_range(fitStartDate, fitEndDate, periods=samples)
+    fitDates = pd.date_range(fitStartDate, fitEndDate, periods=fitSamples)
     testDates = pd.date_range(testStartDate, testEndDate, freq="1h")
 
     # Extract physical model parameters
@@ -389,7 +391,7 @@ def main(input: str, output_dir: str) -> None:
         arguments = x[1]
 
         # Sort by duration, then number of samples
-        return arguments["duration"], arguments["samples"]
+        return arguments["fitDuration"], arguments["fitSamples"]
 
     # Sort by descending expected execution time
     input_pairs = sorted(input_pairs, key=sort_key, reverse=True)
