@@ -267,7 +267,7 @@ class ThalassaNumericalPropagator(Propagator):
         self.model.gdeg = model.potential_degree
         self.model.gord = model.potential_order
         # Set lunisolar perturbations
-        self.model.iephem = pythalassa.EPHEM_DE431  # TODO: switch to JPL?
+        self.model.iephem = pythalassa.EPHEM_DE431
         self.model.isun = pythalassa.SUN_ENABLED if model.sun else pythalassa.SUN_DISABLED
         self.model.imoon = pythalassa.MOON_ENABLED if model.moon else pythalassa.MOON_DISABLED
         # Set drag model
