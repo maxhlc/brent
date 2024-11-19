@@ -199,7 +199,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         model: NumericalPropagatorParameters,
     ) -> np.ndarray:
         # Calculate states
-        states_ = ThalassaBatchLeastSquares._propagate(params, dates, states, model)
+        states_ = ThalassaBatchLeastSquares._propagate(params, dates, model)
 
         # Calculate residuals
         residuals = (states_ - states).ravel()
@@ -211,7 +211,6 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
     def _propagate(
         params: np.ndarray,
         dates: pd.DatetimeIndex,
-        states: np.ndarray,
         model: NumericalPropagatorParameters,
     ) -> np.ndarray:
         # Extract initial state vector
@@ -262,7 +261,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
 
         # Set initial guess
         # TODO: ratios (e.g. CR * A / m) instead of the coefficient alone
-        p0 = states[0, :]
+        p0 = np.copy(states[0, :])
         if self.srp_estimate:
             p0 = np.append(p0, model.cr)
         if self.drag_estimate:
@@ -287,7 +286,6 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             states_ = ThalassaBatchLeastSquares._propagate(
                 params=params,
                 dates=dates,
-                states=states,
                 model=model,
             )
 
