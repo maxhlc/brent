@@ -198,8 +198,7 @@ def fit(spacecraft, parameters):
     fitEndDate = fitMidPoint + fitDuration / 2
     # Test
     testStartDate = fitStartDate
-    testDuration = fitDuration + parameters["testDuration"]  # TODO: rename?
-    testEndDate = testStartDate + testDuration
+    testEndDate = fitEndDate + parameters["testDuration"]
 
     # Generate dates
     # TODO: set sampling technique, testing duration
