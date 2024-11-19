@@ -43,7 +43,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
 
         # Extract x-y-z variables
         x = df_object["midPoint"].to_numpy()
-        y = duration_to_days(df_object["duration"])
+        y = duration_to_days(df_object["fitDuration"])
         z = df_object["fitErrorRMS"].to_numpy()
 
         # Extract reference propagator
@@ -134,7 +134,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
 
         # Extract x-y-z variables
         x = df_object["midPoint"].to_numpy()
-        y = df_object["samples"].to_numpy()
+        y = df_object["fitSamples"].to_numpy()
         z = df_object["fitErrorRMS"].to_numpy()
 
         # Extract reference propagator
@@ -212,14 +212,14 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
 
 def plot_proportion(df: pd.DataFrame, fname: str) -> None:
     # Iterate through windows
-    for window in np.unique(df["duration"]):
+    for window in np.unique(df["fitDuration"]):
         # Iterate through samples
-        for samples in np.unique(df["samples"]):
+        for samples in np.unique(df["fitSamples"]):
             # Calculate number of days in window
             days = int(window / np.timedelta64(1, "D"))
 
             # Extract subtable
-            idx = np.logical_and(df["duration"] == window, df["samples"] == samples)
+            idx = np.logical_and(df["fitDuration"] == window, df["fitSamples"] == samples)
             df_ = df[idx].copy()
 
             # Extract reference propagator
@@ -301,14 +301,14 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
     )
 
     # Iterate through windows
-    for window in np.unique(df["duration"]):
+    for window in np.unique(df["fitDuration"]):
         # Iterate through samples
-        for samples in np.unique(df["samples"]):
+        for samples in np.unique(df["fitSamples"]):
             # Calculate number of days in window
             days = int(window / np.timedelta64(1, "D"))
 
             # Extract subtable
-            df_ = df[df["duration"] == window].copy()
+            df_ = df[df["fitDuration"] == window].copy()
 
             # Sort subtable by object name
             df_ = df_.sort_values("name")
@@ -376,10 +376,14 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         df_["referencePropagator"] = "SLR"
     if "name" not in df_.columns:
         df_["name"] = df_["sp3name"].apply(lambda x: SP3MAP[x])
+    if "fitDuration" not in df_.columns:
+        df_.rename(columns={"duration": "fitDuration"}, inplace=True)
+    if "fitSamples" not in df_.columns:
+        df_.rename(columns={"samples": "fitSamples"}, inplace=True)
 
     # Calculate fit end
     # TODO: rename start/duration
-    df_["fitEnd"] = df_["midPoint"] + df_["duration"] / 2
+    df_["fitEnd"] = df_["midPoint"] + df_["fitDuration"] / 2
 
     # Calculate date relative to epoch
     func = lambda dates, epoch: duration_to_days(dates - epoch)
@@ -429,8 +433,8 @@ if __name__ == "__main__":
     df = preprocess(df)
 
     # Calculate number of window and sample sizes
-    nwindow = len(np.unique(df["duration"]))
-    nsample = len(np.unique(df["samples"]))
+    nwindow = len(np.unique(df["fitDuration"]))
+    nsample = len(np.unique(df["fitSamples"]))
 
     # Check window and sample size compatibility
     # TODO: consider merged tables
