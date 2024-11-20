@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import json
 import os
+from typing import List
 
 # Third-party imports
 import numpy as np
@@ -21,7 +22,7 @@ class Saver:
         root: str,
         save_period: int = 50,
         retry_limit: int = 5,
-    ):
+    ) -> None:
         # Declare initialisation
         self.initialised = False
 
@@ -52,6 +53,9 @@ class Saver:
         # Results
         self.results = []
 
+        # Save initial metadata
+        self.save_metadata(False)
+
     def update(self, result: dict) -> None:
         # Append result to results
         self.results.append(result)
@@ -64,7 +68,7 @@ class Saver:
         # Set filename suffix
         suffix = "" if final else f"_{self.state}"
 
-        # Generate file name
+        # Generate results filepath
         fname = os.path.join(self.directory, self.name + suffix + ".pkl")
 
         # Convert results to DataFrame
@@ -82,6 +86,43 @@ class Saver:
         except:
             # Print error message
             tqdm.write(f"Error saving file at: {fname}")
+
+        # Save metadata
+        self.save_metadata(final)
+
+    def save_metadata(self, final: bool) -> None:
+        # Generate metadata filepath
+        fname = os.path.join(self.directory, self.name + "_metadata.txt")
+
+        # Declare lines list
+        lines: List[str] = []
+
+        # Start metadata
+        # TODO: cleaner implementation (e.g. input enum for state?)
+        if len(self.results) == 0:
+            # Git commit
+            git_hash = brent.util.get_commit()
+            lines.append(f"Git commit: {git_hash}")
+
+            # Start time
+            time = self.time
+            lines.append(f"Start time: {time.isoformat()}")
+
+        # TODO: save iteration progress?
+
+        # Final metadata
+        if final:
+            # End time
+            time = datetime.now(timezone.utc)
+            lines.append(f"End time:   {time.isoformat()}")
+
+        # Ensure lines have linebreak
+        lines = [line + "\n" for line in lines]
+
+        # Save lines to metdata file
+        # TODO: error handling?
+        with open(fname, "a") as fp:
+            fp.writelines(lines)
 
     def _create_directory(self, root: str, name: str) -> bool:
         # Return if already initialised
