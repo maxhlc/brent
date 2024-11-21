@@ -2,6 +2,7 @@
 from argparse import ArgumentParser
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 import json
 import os
 import signal
@@ -25,18 +26,22 @@ class Saver:
         save_period: int = 50,
         retry_limit: int = 5,
     ) -> None:
-        # Declare initialisation
-        self.initialised = False
+        # Declare state
+        self.state = SaverState.DEINITIALISED
 
         # Loop until directory initialised
         ntries = 0
-        while not self.initialised:
+        while self.state != SaverState.INITIALISED:
             # Save start time and name
             self.time = datetime.now(timezone.utc)
             self.name = self.time.strftime("%Y%m%d_%H%M%S")
 
             # Create directory
-            self.initialised = self._create_directory(root, self.name)
+            initialised = self._create_directory(root, self.name)
+
+            # Set state
+            if initialised:
+                self.state = SaverState.INITIALISED
 
             # Increment number of tries
             ntries += 1
@@ -56,7 +61,10 @@ class Saver:
         self.results = []
 
         # Save initial metadata
-        self.save_metadata(False)
+        self.save_metadata()
+
+        # Set state to running
+        self.state = SaverState.RUNNING
 
     def update(self, result: dict) -> None:
         # Append result to results
@@ -67,8 +75,16 @@ class Saver:
             self.save()
 
     def save(self, final: bool = False) -> None:
+        # Check that saver is still running
+        if self.state != SaverState.RUNNING:
+            raise RuntimeError("Saver not running")
+
+        # Set state
+        if final:
+            self.state = SaverState.FINAL
+
         # Set filename suffix
-        suffix = "" if final else f"_{self.state}"
+        suffix = "" if final else f"_{self.checkpoint}"
 
         # Generate results filepath
         fname = os.path.join(self.directory, self.name + suffix + ".pkl")
@@ -90,25 +106,32 @@ class Saver:
             tqdm.write(f"Error saving file at: {fname}")
 
         # Save metadata
-        self.save_metadata(final)
+        self.save_metadata()
 
-    def save_metadata(self, final: bool) -> None:
+        # Set state to finished
+        if self.state == SaverState.FINAL:
+            self.state = SaverState.FINISHED
+
+    def save_metadata(self) -> None:
         # Generate metadata filepath
         fname = os.path.join(self.directory, self.name + "_metadata.txt")
 
         # Declare lines list
         lines: List[str] = []
 
-        # Start metadata
-        # TODO: cleaner implementation (e.g. input enum for state?)
-        if len(self.results) == 0:
+        # Check run state
+        if self.state == SaverState.INITIALISED:
+            # Start metadata
             lines = self._initial_metadata()
-
-        # TODO: save iteration progress?
-
-        # Final metadata
-        if final:
+        elif self.state == SaverState.RUNNING:
+            # TODO: save iteration progress?
+            pass
+        elif self.state == SaverState.FINAL:
+            # Final metadata
             lines = self._final_metdata()
+        else:
+            # Raise error
+            raise RuntimeError("Incompatible run state")
 
         # Ensure lines have linebreak
         lines = [line + "\n" for line in lines]
@@ -158,7 +181,7 @@ class Saver:
 
     def _create_directory(self, root: str, name: str) -> bool:
         # Return if already initialised
-        if self.initialised:
+        if self.state != SaverState.DEINITIALISED:
             return False
 
         try:
@@ -192,8 +215,16 @@ class Saver:
         # Increment number iteration number
         self.niter += 1
 
-        # Update state
-        self.state = "checkpoint_b" if self.niter % 2 == 0 else "checkpoint_a"
+        # Update checkpoint state
+        self.checkpoint = "checkpoint_b" if self.niter % 2 == 0 else "checkpoint_a"
+
+
+class SaverState(Enum):
+    DEINITIALISED = 1
+    INITIALISED = 2
+    RUNNING = 3
+    FINAL = 4
+    FINISHED = 5
 
 
 def load(fpath):
@@ -441,6 +472,7 @@ def main(input: str, output_dir: str) -> None:
             return
 
         # Save results
+        # TODO: handle repeated signals while saver is still saving
         saver.save(final=True)
 
         # Exit process
