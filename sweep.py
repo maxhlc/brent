@@ -102,21 +102,13 @@ class Saver:
         # Start metadata
         # TODO: cleaner implementation (e.g. input enum for state?)
         if len(self.results) == 0:
-            # Git commit
-            git_hash = brent.util.get_commit()
-            lines.append(f"Git commit: {git_hash}")
-
-            # Start time
-            time = self.time
-            lines.append(f"Start time: {time.isoformat()}")
+            lines = self._initial_metadata()
 
         # TODO: save iteration progress?
 
         # Final metadata
         if final:
-            # End time
-            time = datetime.now(timezone.utc)
-            lines.append(f"End time:   {time.isoformat()}")
+            lines = self._final_metdata()
 
         # Ensure lines have linebreak
         lines = [line + "\n" for line in lines]
@@ -125,6 +117,44 @@ class Saver:
         # TODO: error handling?
         with open(fname, "a") as fp:
             fp.writelines(lines)
+
+    def _initial_metadata(self) -> List[str]:
+        # Declare lines list
+        lines: List[str] = []
+
+        # Git commit
+        git_hash = brent.util.get_commit()
+        lines.append(f"Git commit: {git_hash}")
+
+        # Start time
+        time = self.time
+        lines.append(f"Start time: {time.isoformat()}")
+
+        # Return lines
+        return lines
+
+    def _final_metdata(self) -> List[str]:
+        # Declare lines list
+        lines: List[str] = []
+
+        # End time
+        time = datetime.now(timezone.utc)
+        lines.append(f"End time:   {time.isoformat()}")
+
+        # Execution time
+        exectime = (time - self.time).total_seconds()
+        lines.append(f"Exec. time: {exectime:.2f} s")
+
+        # Number of fits
+        nfits = len(self.results)
+        lines.append(f"No. fits:   {nfits}")
+
+        # Fit period
+        fitperiod = exectime / nfits
+        lines.append(f"Fit rate:   {fitperiod:.2f} s/fit")
+
+        # Return lines
+        return lines
 
     def _create_directory(self, root: str, name: str) -> bool:
         # Return if already initialised
