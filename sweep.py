@@ -4,6 +4,8 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import json
 import os
+import signal
+import sys
 from typing import List
 
 # Third-party imports
@@ -399,6 +401,24 @@ def main(input: str, output_dir: str) -> None:
     # Declare results saver
     saver = Saver(output_dir)
     saver.save_input(input)
+
+    # Get main process identifier
+    pid = os.getpid()
+
+    def exit_handler(signum, frame) -> None:
+        # Ignore signals from child processes
+        if os.getpid() != pid:
+            return
+
+        # Save results
+        saver.save(final=True)
+
+        # Exit process
+        sys.exit()
+
+    # Register exit handler
+    for sig in [signal.SIGINT, signal.SIGTERM]:
+        signal.signal(sig, exit_handler)
 
     # Load arguments
     spacecraft, arguments = load(input)
