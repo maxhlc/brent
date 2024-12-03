@@ -29,7 +29,7 @@ def roundup(val: float, interval: float) -> float:
 
 
 def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
-    # Calculate limits
+    # Calculate x-limits
     # TODO: cleaner implementation
     xlim = (
         np.min(df["midPoint"]),
@@ -89,8 +89,16 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         # Create plot
         fig, ax = plt.subplots(figsize=FIGSIZE)
 
+        # Calculate z-limits
+        # TODO: harmonise across objects?
+        zmax = np.nanmax(z)
+        interval = 10 ** (np.floor(np.log10(zmax)) + 1) / 5
+        zupper = roundup(zmax, interval)
+        zn = 8 * 4 + 1
+        zlevels = np.linspace(0.0, zupper, zn)
+
         # Plot mesh
-        plt.contourf(x[idx], y[idx], z[idx])
+        plt.contourf(x[idx], y[idx], z[idx], zlevels)
 
         # Set limits
         # TODO: y- and z-axes
@@ -219,7 +227,10 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             days = int(window / np.timedelta64(1, "D"))
 
             # Extract subtable
-            idx = np.logical_and(df["fitDuration"] == window, df["fitSamples"] == samples)
+            idx = np.logical_and(
+                df["fitDuration"] == window,
+                df["fitSamples"] == samples,
+            )
             df_ = df[idx].copy()
 
             # Extract reference propagator
@@ -292,13 +303,10 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
         np.min(df["midPoint"]),
         np.max(df["midPoint"]),
     )
-    ylim = (
-        0,
-        roundup(
-            np.max(df["fitErrorRMS"]),
-            5000,
-        ),
-    )
+    ymax = np.nanmax(df["fitErrorRMS"])
+    interval = 10 ** (np.floor(np.log10(ymax)) + 1) / 5
+    yupper = roundup(ymax, interval)
+    ylim = (0, yupper)
 
     # Iterate through windows
     for window in np.unique(df["fitDuration"]):
