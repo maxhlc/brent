@@ -1,14 +1,23 @@
 # Standard imports
 from argparse import ArgumentParser
+from copy import deepcopy
 
 # Third-party imports
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
+# Store pre-execution Matplotlib parameters
+RCPARAMS = deepcopy(plt.rcParams)
+
 # Set output figure size
-FIGSIZE = (5.5, 4.0)
+FIGSIZE = (3.25, 3.25)
+
+# Set font size
+plt.rcParams.update({"font.size": 7})
 
 # Declare name map
 SP3MAP = {
@@ -17,6 +26,45 @@ SP3MAP = {
     "L52": "LAGEOS-2",
     "L53": "Etalon 1",
     "L54": "Etalon 2",
+}
+
+LIMITS = {
+    # Calibration
+    "LAGEOS-1": 10,
+    "LAGEOS-2": 10,
+    "Etalon 1": 10,
+    "Etalon 2": 10,
+    # Test
+    "NAVSTAR 1": 40,
+    "NAVSTAR 2": 40,
+    "Astra 1E": 100,
+    "Astra 1H": 100,
+}
+
+INTERVALS = {
+    # Calibration
+    "LAGEOS-1": 1,
+    "LAGEOS-2": 1,
+    "Etalon 1": 1,
+    "Etalon 2": 1,
+    # Test
+    "NAVSTAR 1": 5,
+    "NAVSTAR 2": 5,
+    "Astra 1E": 10,
+    "Astra 1H": 10,
+}
+
+THRESHOLDS = {
+    # Calibration
+    "LAGEOS-1": 0.5,
+    "LAGEOS-2": 0.75,
+    "Etalon 1": 1,
+    "Etalon 2": 1.5,
+    # Test
+    "NAVSTAR 1": 5,
+    "NAVSTAR 2": 20,
+    "Astra 1E": 20,
+    "Astra 1H": 20,
 }
 
 # Declare function to convert duration to days
@@ -44,7 +92,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         # Extract x-y-z variables
         x = df_object["midPoint"].to_numpy()
         y = duration_to_days(df_object["fitDuration"])
-        z = df_object["fitErrorRMS"].to_numpy()
+        z = df_object["fitErrorRMS"].to_numpy() / 1000.0
 
         # Extract reference propagator
         referencePropagators = np.unique(df_object["referencePropagator"])
@@ -90,18 +138,30 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         fig, ax = plt.subplots(figsize=FIGSIZE)
 
         # Calculate z-limits
-        # TODO: harmonise across objects?
-        zmax = np.nanmax(z)
-        interval = 10 ** (np.floor(np.log10(zmax)) + 1) / 5
-        zupper = roundup(zmax, interval)
-        zn = 8 * 4 + 1
+        zupper = LIMITS[object]
+        zn = 2 * int(zupper // INTERVALS[object]) + 1
         zlevels = np.linspace(0.0, zupper, zn)
 
+        # Configure colour map
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_over(cmap(1.0))
+
+        # Extend colour map if maximum value exceeded
+        extend = "max" if np.nanmax(z) > zupper else "neither"
+
         # Plot mesh
-        plt.contourf(x[idx], y[idx], z[idx], zlevels)
+        plt.contourf(
+            x[idx],
+            y[idx],
+            z[idx],
+            zlevels,
+            norm=colors.Normalize(0, zupper, clip=True),
+            cmap=cmap,
+            extend=extend,
+        )
 
         # Set limits
-        # TODO: y- and z-axes
+        # TODO: y-axis
         plt.xlim(xlim)
 
         # Set axis labels
@@ -109,7 +169,20 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.ylabel("Fit Window Size [days]")
 
         # Add colour bar
-        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [m]")
+        cbar = plt.colorbar(
+            label=f"Position RMSE (w.r.t. {referencePropagator}) [km]",
+            extend=extend,
+            aspect=40,
+        )
+        cbar.set_ticks(
+            [
+                INTERVALS[object] * n
+                for n in range(0, int(zupper // INTERVALS[object]) + 1)
+            ]
+        )
+
+        # Plot threshold
+        cbar.ax.plot([0, 1], [THRESHOLDS[object]] * 2, "r")
 
         # Format dates
         fig.autofmt_xdate()
@@ -143,7 +216,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         # Extract x-y-z variables
         x = df_object["midPoint"].to_numpy()
         y = df_object["fitSamples"].to_numpy()
-        z = df_object["fitErrorRMS"].to_numpy()
+        z = df_object["fitErrorRMS"].to_numpy() / 1000.0
 
         # Extract reference propagator
         referencePropagators = np.unique(df_object["referencePropagator"])
@@ -192,7 +265,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.contourf(x[idx], y[idx], z[idx])
 
         # Set limits
-        # TODO: y- and z-axes
+        # TODO: y-axis
         plt.xlim(xlim)
 
         # Set axis labels
@@ -200,7 +273,8 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.ylabel("Sample Size [-]")
 
         # Add colour bar
-        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [m]")
+        # TODO: configure same as plot_window_mesh
+        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [km]")
 
         # Format dates
         fig.autofmt_xdate()
@@ -460,3 +534,7 @@ if __name__ == "__main__":
 
     # Plot error histories
     plot_errors(df, fname)
+
+    # Reset changes to Matplotlib parameters
+    # TODO: not executed in cases of crash etc., switch to context manager
+    plt.rcParams.update(RCPARAMS)
