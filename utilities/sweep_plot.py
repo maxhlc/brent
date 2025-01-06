@@ -436,6 +436,63 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             plt.close()
 
 
+def plot_window_mean(df: pd.DataFrame, fname: str) -> None:
+    # Preprocess
+    df_ = df.copy()
+    df_["fitDuration"] = duration_to_days(df_["fitDuration"])
+    df_["fitErrorRMS"] /= 1e3
+
+    # Group results
+    groups = ["name", "fitDuration"]
+    columns = [*groups, "fitErrorRMS"]
+    df_grouped = df_[columns].groupby(groups, sort=False).mean()
+
+    # Save results
+    df_grouped.to_csv(f"{fname}_mean.csv")
+
+    # Set upper limit
+    # TODO: replace with automatic limits
+    ymax = np.max(df_grouped["fitErrorRMS"])
+    top = 6 if ymax < 10 else roundup(ymax, 10.0)
+
+    # Create plot
+    plt.figure(figsize=FIGSIZE)
+
+    # Plot mean RMSEs
+    sns.lineplot(
+        data=df_,
+        x="fitDuration",
+        y="fitErrorRMS",
+        errorbar=None,
+        hue="name",
+    )
+
+    # Set limits
+    plt.xlim((np.min(df_["fitDuration"]), np.max(df_["fitDuration"])))
+    plt.ylim((0, top))
+
+    # Set locator
+    ax = plt.gca()
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Set labels
+    plt.xlabel("Fit Window Size [days]")
+    plt.ylabel("Mean Position RMSE [km]")
+
+    # Update legend title
+    plt.legend(title="Satellite")
+
+    # Set layout
+    plt.tight_layout()
+
+    # Add grid
+    plt.grid()
+
+    # Export plot
+    plt.savefig(f"{fname}_duration_mean_rmse.png", dpi=600)
+    plt.savefig(f"{fname}_duration_mean_rmse.pdf")
+
+
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     # Make a copy of the table
     df_ = df.copy()
@@ -521,6 +578,9 @@ if __name__ == "__main__":
     # Check window and sample size compatibility
     # TODO: consider merged tables
     if (nwindow > 1) and (nsample == 1):
+        # Plot window mean
+        plot_window_mean(df, fname)
+
         # Plot window mesh
         plot_window_mesh(df, fname)
     elif (nwindow == 1) and (nsample > 1):
