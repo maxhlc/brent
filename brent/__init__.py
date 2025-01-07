@@ -20,6 +20,7 @@ from .constants import Constants
 
 # Internal imports
 from . import bias
+from . import covariance
 from . import filter
 from . import frames
 from . import io

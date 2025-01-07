@@ -13,7 +13,7 @@ from org.orekit.propagation.analytical import AggregateBoundedPropagator
 import java.util
 
 # Internal imports
-from .propagator import WrappedPropagator
+from brent.propagators import WrappedPropagator
 
 
 class SP3Propagator(WrappedPropagator):

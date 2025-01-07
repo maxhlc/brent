@@ -314,19 +314,11 @@ def fit(spacecraft, parameters):
 
     # Extract bias model
     bias = spacecraft["bias"]
-    if bias["model"] == "none":
-        biasModel = brent.bias.BiasModel()
-    elif bias["model"] == "simplifiedalongtracksinusoidal":
-        biasModel = brent.bias.SimplifiedAlongtrackSinusoidal(*bias["parameters"])
-    else:
-        raise ValueError("Unknown bias model")
+    biasModel = brent.bias.BiasFactory.create(**bias)
 
     # Extract sample noise model
     noise = parameters["noise"]
-    if noise["frame"] == "rtn":
-        covarianceProvider = brent.filter.RTNCovarianceProvider(np.array(noise["std"]))
-    else:
-        covarianceProvider = brent.filter.CovarianceProvider()
+    covarianceProvider = brent.covariance.CovarianceFactory.create(**noise)
 
     # Load TLEs
     # TODO: include TLEs from before window?

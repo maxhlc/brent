@@ -18,7 +18,7 @@ from org.orekit.propagation.analytical.tle import (
 
 # Internal imports
 from brent import Constants
-from .propagator import Propagator, WrappedPropagator
+from brent.propagators import Propagator, WrappedPropagator
 
 
 class TLEPropagator(Propagator):

@@ -6,42 +6,28 @@ from datetime import datetime
 import numpy as np
 
 # Internal imports
+from .factory import BiasFactory
+from .bias import Bias
 import brent.frames
 
 
-class BiasModel:
-
-    def biases(self, dates, states):
-        # Return zero biases
-        return np.zeros(states.shape)
-
-    def debias(self, dates, states):
-        # Calculate biases
-        bias = self.biases(dates, states)
-
-        # Debias states
-        states_debiased = states - bias
-
-        # Return debiased states
-        return states_debiased
-
-
+@BiasFactory.register("simplifiedalongtracksinusoidal")
 @dataclass
-class SimplifiedAlongtrackSinusoidal(BiasModel):
+class SimplifiedAlongtrackSinusoidalBias(Bias):
     # Model parameters
     amplitude: float
     frequency: float
     phase: float
     offset: float
 
-    def __model(self, t: np.ndarray):
+    def __model(self, t: np.ndarray) -> np.ndarray:
         # Calculate model period
         period = 2.0 * np.pi / self.frequency
 
         # Return along-track bias
         return self.amplitude * np.sin(period * (t + self.phase)) + self.offset
 
-    def biases(self, dates, states):
+    def biases(self, dates, states) -> np.ndarray:
         # Calculate radial distances
         rmag = np.linalg.norm(states[:, 0:3], axis=1)
 
