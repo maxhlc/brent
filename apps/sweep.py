@@ -1,5 +1,5 @@
-# Standard imports
-from argparse import ArgumentParser
+# Standard import
+from argparse import ArgumentParser, Namespace
 from dataclasses import asdict
 from datetime import datetime, timedelta
 import json
@@ -12,8 +12,22 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+# External imports
+from brent.bias import BiasFactory
+from brent.covariance import CovarianceFactory
+from brent.filter import OrekitBatchLeastSquares, ThalassaBatchLeastSquares
+from brent.frames import RTN
+from brent.io import Saver
+from brent.propagators import (
+    Propagator,
+    NumericalPropagatorParameters,
+    SP3Propagator,
+    TLEPropagator,
+)
+from brent.util import generate_parameter_permutations
+
 # Internal imports
-import brent
+from .application import Application, ApplicationFactory
 
 
 def load(fpath):
@@ -99,19 +113,19 @@ def fit(spacecraft, parameters):
     testDates = pd.date_range(testStartDate, testEndDate, freq="1h")
 
     # Extract physical model parameters
-    model = brent.propagators.NumericalPropagatorParameters(**spacecraft["model"])
+    model = NumericalPropagatorParameters(**spacecraft["model"])
 
     # Extract bias model
     bias = spacecraft["bias"]
-    biasModel = brent.bias.BiasFactory.create(**bias)
+    biasModel = BiasFactory.create(**bias)
 
     # Extract sample noise model
     noise = parameters["noise"]
-    covarianceProvider = brent.covariance.CovarianceFactory.create(**noise)
+    covarianceProvider = CovarianceFactory.create(**noise)
 
     # Load TLEs
     # TODO: include TLEs from before window?
-    samplePropagator = brent.propagators.TLEPropagator.load(
+    samplePropagator = TLEPropagator.load(
         spacecraft["tle"],
         fitStartDate,
         fitEndDate,
@@ -126,14 +140,14 @@ def fit(spacecraft, parameters):
     # Create filter
     propagator = parameters["propagator"]
     if propagator == "orekit":
-        filter = brent.filter.OrekitBatchLeastSquares(
+        filter = OrekitBatchLeastSquares(
             fitDates,
             sampleStates,
             model,
             covarianceProvider,
         )
     elif propagator == "thalassa":
-        filter = brent.filter.ThalassaBatchLeastSquares(
+        filter = ThalassaBatchLeastSquares(
             fitDates,
             sampleStates,
             model,
@@ -155,7 +169,7 @@ def fit(spacecraft, parameters):
     fitStates = fitPropagator.propagate(fitDates)
 
     # Calculate RTN transformations
-    rtn = brent.frames.RTN.getTransform(fitStates)
+    rtn = RTN.getTransform(fitStates)
 
     # Transform fit covariance to RTN
     fitCovarianceRTN = rtn[0, :, :] @ fitCovariance @ rtn[0, :, :].T
@@ -165,7 +179,7 @@ def fit(spacecraft, parameters):
     deltaStates = sampleStates - fitStates
 
     # Transform state residuals to RTN
-    deltaStatesRTN = brent.frames.RTN.transform(rtn, deltaStates)
+    deltaStatesRTN = RTN.transform(rtn, deltaStates)
 
     # Calculate residual sample covariances
     residualCovariance = np.cov(deltaStates, rowvar=False)
@@ -173,10 +187,10 @@ def fit(spacecraft, parameters):
 
     # Extract test propagator
     if spacecraft["sp3propagator"] is None:
-        testPropagator = brent.propagators.TLEPropagator.load(spacecraft["tle"])
+        testPropagator = TLEPropagator.load(spacecraft["tle"])
         referencePropagator = "TLE"
     else:
-        testPropagator: brent.propagators.Propagator = spacecraft["sp3propagator"]
+        testPropagator: Propagator = spacecraft["sp3propagator"]
         referencePropagator = "SLR"
 
     # Calculate test states
@@ -241,7 +255,7 @@ def fit_wrapper(inputs):
 
 def main(input: str, output_dir: str) -> None:
     # Declare results saver
-    saver = brent.io.Saver(output_dir)
+    saver = Saver(output_dir)
     saver.save_input(input)
 
     # Get main process identifier
@@ -274,13 +288,13 @@ def main(input: str, output_dir: str) -> None:
             continue
 
         # Load SP3 propagator
-        ispacecraft["sp3propagator"] = brent.propagators.SP3Propagator.load(
+        ispacecraft["sp3propagator"] = SP3Propagator.load(
             ispacecraft["sp3"],
             ispacecraft["sp3name"],
         )
 
     # Generate parameter permutations
-    argument_permutations = brent.util.generate_parameter_permutations(arguments)
+    argument_permutations = generate_parameter_permutations(arguments)
 
     # Generate input pairs
     input_pairs = [
@@ -313,12 +327,20 @@ def main(input: str, output_dir: str) -> None:
     # TODO: delete checkpoint files?
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = ArgumentParser()
-    parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
-    parser.add_argument("-o", "--output_dir", type=str, default="./output/")
-    parser_args = parser.parse_args()
+@ApplicationFactory.register("sweep")
+class Sweep(Application):
 
-    # Execute
-    main(parser_args.input, parser_args.output_dir)
+    @staticmethod
+    def run(arguments: Namespace) -> None:
+        # Extract arguments
+        input = arguments.input
+        output_dir = arguments.output_dir
+
+        # Execute sweep
+        main(input, output_dir)
+
+    @classmethod
+    def addArguments(cls, parser: ArgumentParser) -> None:
+        # Add arguments to parser
+        parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
+        parser.add_argument("-o", "--output_dir", type=str, default="./output/")

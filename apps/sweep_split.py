@@ -1,7 +1,10 @@
 # Standard imports
-import argparse
+from argparse import ArgumentParser, Namespace
 import copy
 import json
+
+# Internal imports
+from .application import Application, ApplicationFactory
 
 
 def main(input: str) -> None:
@@ -26,11 +29,18 @@ def main(input: str) -> None:
             json.dump(iconfig, fp, indent=4)
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = argparse.ArgumentParser()
-    parser.add_argument("input", type=str)
-    parser_args = parser.parse_args()
+@ApplicationFactory.register("sweep_split")
+class SweepSplit(Application):
 
-    # Execute main function
-    main(parser_args.input)
+    @staticmethod
+    def run(arguments: Namespace) -> None:
+        # Extract arguments
+        input = arguments.input
+
+        # Execute sweep split
+        main(input)
+
+    @classmethod
+    def addArguments(cls, parser: ArgumentParser) -> None:
+        # Add arguments to parser
+        parser.add_argument("input", type=str)

@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 # Standard imports
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 import json
 import os.path
-from typing import List, Dict
+from typing import List
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -20,8 +20,11 @@ import orekit
 from orekit.pyhelpers import absolutedate_to_datetime
 from org.orekit.propagation.analytical.tle import TLE
 
-# Internal imports
+# External imports
 import brent
+
+# Internal imports
+from .application import Application, ApplicationFactory
 
 
 @dataclass
@@ -243,7 +246,10 @@ def save(parameters: Parameters, tles: List[TLE], stles: List[TLE]):
     save_stles(fname_stles, stles, object_name=parameters.stlename)
 
 
-def main(parameters: Parameters) -> None:
+def main(input: str) -> None:
+    # Load parameters
+    parameters = Parameters.load(input)
+
     # Import SP3
     sp3 = brent.propagators.SP3Propagator.load(parameters.sp3path, parameters.sp3id)
 
@@ -334,14 +340,18 @@ def main(parameters: Parameters) -> None:
     plt.show()
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = ArgumentParser()
-    parser.add_argument("--input", type=str, default="./input/stle.json")
-    parser_args = parser.parse_args()
+@ApplicationFactory.register("generate_stles")
+class GenerateSTLEs(Application):
 
-    # Load parameters
-    parameters = Parameters.load(parser_args.input)
+    @staticmethod
+    def run(arguments: Namespace) -> None:
+        # Extract arguments
+        input = arguments.input
 
-    # Execute main function
-    main(parameters)
+        # Execute S-TLE generation
+        main(input)
+
+    @classmethod
+    def addArguments(cls, parser: ArgumentParser) -> None:
+        # Add arguments to parser
+        parser.add_argument("--input", type=str, default="./input/stle.json")

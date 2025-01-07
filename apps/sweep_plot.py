@@ -1,5 +1,5 @@
 # Standard imports
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 
 # Third-party imports
@@ -9,6 +9,9 @@ import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
 import seaborn as sns
+
+# Internal imports
+from .application import Application, ApplicationFactory
 
 # Store pre-execution Matplotlib parameters
 RCPARAMS = deepcopy(plt.rcParams)
@@ -556,9 +559,9 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     return df_
 
 
-def main(fname: str) -> None:
+def main(input: str) -> None:
     # Load results
-    df = pd.read_pickle(fname)
+    df = pd.read_pickle(input)
 
     # Preprocess results
     df = preprocess(df)
@@ -571,35 +574,39 @@ def main(fname: str) -> None:
     # TODO: consider merged tables
     if (nwindow > 1) and (nsample == 1):
         # Plot window mean
-        plot_window_mean(df, fname)
+        plot_window_mean(df, input)
 
         # Plot window mesh
-        plot_window_mesh(df, fname)
+        plot_window_mesh(df, input)
     elif (nwindow == 1) and (nsample > 1):
         # Plot sample mesh
-        plot_sample_mesh(df, fname)
+        plot_sample_mesh(df, input)
     else:
         print("Incompatible number of windows and samples")
 
     # Plot proportions
-    plot_proportion(df, fname)
+    plot_proportion(df, input)
 
     # Plot error histories
-    plot_errors(df, fname)
+    plot_errors(df, input)
 
     # Reset changes to Matplotlib parameters
     # TODO: not executed in cases of crash etc., switch to context manager
     plt.rcParams.update(RCPARAMS)
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = ArgumentParser()
-    parser.add_argument("fname", type=str)
-    parser_args = parser.parse_args()
+@ApplicationFactory.register("sweep_plot")
+class SweepPlot(Application):
 
-    # Extract filename
-    fname = parser_args.fname
+    @staticmethod
+    def run(arguments: Namespace) -> None:
+        # Extract arguments
+        input = arguments.input
 
-    # Plot results
-    main(fname)
+        # Execute sweep plot
+        main(input)
+
+    @classmethod
+    def addArguments(cls, parser: ArgumentParser) -> None:
+        # Add arguments to parser
+        parser.add_argument("input", type=str)

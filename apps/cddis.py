@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Standard imports
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -11,12 +11,15 @@ import os.path
 from string import Template
 from typing import List, Tuple
 
-# Third-party import
+# Third-party imports
 import pandas as pd
 from tqdm import tqdm
 
-# Internal imports
+# External imports
 from brent.util import CDDISDownloader
+
+# Internal imports
+from .application import Application, ApplicationFactory
 
 
 @dataclass
@@ -125,7 +128,10 @@ def download_worker(bundle: DownloadWorkerBundle) -> Tuple[DownloadWorkerBundle,
         return bundle, False
 
 
-def main(parameters: Parameters) -> None:
+def main(input: str) -> None:
+    # Load parameters
+    parameters = Parameters.load(input)
+
     # Generate dates
     dates = [
         date.strftime("%y%m%d")
@@ -168,14 +174,18 @@ def main(parameters: Parameters) -> None:
             pbar.update()
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = ArgumentParser()
-    parser.add_argument("--input", type=str, default="./input/download.json")
-    parser_args = parser.parse_args()
+@ApplicationFactory.register("cddis")
+class CDDIS(Application):
 
-    # Load parameters
-    parameters = Parameters.load(parser_args.input)
+    @staticmethod
+    def run(arguments: Namespace) -> None:
+        # Extract arguments
+        input = arguments.input
 
-    # Execute main function
-    main(parameters)
+        # Execute download
+        main(input)
+
+    @classmethod
+    def addArguments(cls, parser: ArgumentParser) -> None:
+        # Add arguments to parser
+        parser.add_argument("--input", type=str, default="./input/download.json")
