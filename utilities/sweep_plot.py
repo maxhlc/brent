@@ -556,15 +556,7 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
     return df_
 
 
-if __name__ == "__main__":
-    # Parse input
-    parser = ArgumentParser()
-    parser.add_argument("fname", type=str)
-    parser_args = parser.parse_args()
-
-    # Extract filename
-    fname = parser_args.fname
-
+def main(fname: str) -> None:
     # Load results
     df = pd.read_pickle(fname)
 
@@ -598,3 +590,16 @@ if __name__ == "__main__":
     # Reset changes to Matplotlib parameters
     # TODO: not executed in cases of crash etc., switch to context manager
     plt.rcParams.update(RCPARAMS)
+
+
+if __name__ == "__main__":
+    # Parse input
+    parser = ArgumentParser()
+    parser.add_argument("fname", type=str)
+    parser_args = parser.parse_args()
+
+    # Extract filename
+    fname = parser_args.fname
+
+    # Plot results
+    main(fname)
