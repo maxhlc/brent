@@ -354,10 +354,4 @@ class GenerateSTLEs(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument(
-            "-i",
-            "--input",
-            type=str,
-            default="./input/stle.json",
-            help="Input filepath",
-        )
+        parser.add_argument("input", type=str, help="Input filepath")
