@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 # Standard imports
-from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -17,9 +16,6 @@ from tqdm import tqdm
 
 # External imports
 from brent.util import CDDISDownloader
-
-# Internal imports
-from .application import Application, ApplicationFactory
 
 
 @dataclass
@@ -172,20 +168,3 @@ def main(input: str) -> None:
 
             # Update progress bar
             pbar.update()
-
-
-@ApplicationFactory.register("cddis", "Download SP3 files from CDDIS")
-class CDDIS(Application):
-
-    @staticmethod
-    def run(arguments: Namespace) -> None:
-        # Extract arguments
-        input = arguments.input
-
-        # Execute download
-        main(input)
-
-    @classmethod
-    def addArguments(cls, parser: ArgumentParser) -> None:
-        # Add arguments to parser
-        parser.add_argument("input", type=str, help="Input filepath")

@@ -2,9 +2,6 @@
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, Namespace
 
-# External imports
-from brent.util import Factory
-
 
 class Application(ABC):
 

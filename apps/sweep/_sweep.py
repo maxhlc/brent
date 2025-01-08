@@ -1,5 +1,4 @@
 # Standard import
-from argparse import ArgumentParser, Namespace
 from dataclasses import asdict
 from datetime import datetime, timedelta
 import json
@@ -25,9 +24,6 @@ from brent.propagators import (
     TLEPropagator,
 )
 from brent.util import generate_parameter_permutations
-
-# Internal imports
-from .application import Application, ApplicationFactory
 
 
 def load(fpath):
@@ -325,34 +321,3 @@ def main(input: str, output_dir: str) -> None:
     saver.save(final=True)
 
     # TODO: delete checkpoint files?
-
-
-@ApplicationFactory.register("sweep", "Sweep multiple filter cases")
-class Sweep(Application):
-
-    @staticmethod
-    def run(arguments: Namespace) -> None:
-        # Extract arguments
-        input = arguments.input
-        output_dir = arguments.output_dir
-
-        # Execute sweep
-        main(input, output_dir)
-
-    @classmethod
-    def addArguments(cls, parser: ArgumentParser) -> None:
-        # Add arguments to parser
-        parser.add_argument(
-            "-i",
-            "--input",
-            type=str,
-            default="./input/sweep.json",
-            help="Input filepath",
-        )
-        parser.add_argument(
-            "-o",
-            "--output_dir",
-            type=str,
-            default="./output/",
-            help="Output directory",
-        )

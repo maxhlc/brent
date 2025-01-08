@@ -1,10 +1,6 @@
 # Standard imports
-from argparse import ArgumentParser, Namespace
 import copy
 import json
-
-# Internal imports
-from .application import Application, ApplicationFactory
 
 
 def main(input: str) -> None:
@@ -27,20 +23,3 @@ def main(input: str) -> None:
         # Save configuration
         with open(output_path, "w") as fp:
             json.dump(iconfig, fp, indent=4)
-
-
-@ApplicationFactory.register("sweep_split", "Split sweep input file")
-class SweepSplit(Application):
-
-    @staticmethod
-    def run(arguments: Namespace) -> None:
-        # Extract arguments
-        input = arguments.input
-
-        # Execute sweep split
-        main(input)
-
-    @classmethod
-    def addArguments(cls, parser: ArgumentParser) -> None:
-        # Add arguments to parser
-        parser.add_argument("input", type=str, help="Input filepath")

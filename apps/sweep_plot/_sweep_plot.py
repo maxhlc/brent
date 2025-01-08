@@ -1,5 +1,4 @@
 # Standard imports
-from argparse import ArgumentParser, Namespace
 from copy import deepcopy
 
 # Third-party imports
@@ -9,9 +8,6 @@ import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
-# Internal imports
-from .application import Application, ApplicationFactory
 
 # Store pre-execution Matplotlib parameters
 RCPARAMS = deepcopy(plt.rcParams)
@@ -593,20 +589,3 @@ def main(input: str) -> None:
     # Reset changes to Matplotlib parameters
     # TODO: not executed in cases of crash etc., switch to context manager
     plt.rcParams.update(RCPARAMS)
-
-
-@ApplicationFactory.register("sweep_plot", "Plot sweep results")
-class SweepPlot(Application):
-
-    @staticmethod
-    def run(arguments: Namespace) -> None:
-        # Extract arguments
-        input = arguments.input
-
-        # Execute sweep plot
-        main(input)
-
-    @classmethod
-    def addArguments(cls, parser: ArgumentParser) -> None:
-        # Add arguments to parser
-        parser.add_argument("input", type=str, help="Input filepath")
