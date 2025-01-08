@@ -340,7 +340,7 @@ def main(input: str) -> None:
     plt.show()
 
 
-@ApplicationFactory.register("generate_stles")
+@ApplicationFactory.register("generate_stles", "Generate S-TLEs from SP3 data")
 class GenerateSTLEs(Application):
 
     @staticmethod
@@ -354,4 +354,10 @@ class GenerateSTLEs(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("--input", type=str, default="./input/stle.json")
+        parser.add_argument(
+            "-i",
+            "--input",
+            type=str,
+            default="./input/stle.json",
+            help="Input filepath",
+        )

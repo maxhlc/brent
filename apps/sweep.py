@@ -327,7 +327,7 @@ def main(input: str, output_dir: str) -> None:
     # TODO: delete checkpoint files?
 
 
-@ApplicationFactory.register("sweep")
+@ApplicationFactory.register("sweep", "Sweep multiple filter cases")
 class Sweep(Application):
 
     @staticmethod
@@ -342,5 +342,17 @@ class Sweep(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("-i", "--input", type=str, default="./input/sweep.json")
-        parser.add_argument("-o", "--output_dir", type=str, default="./output/")
+        parser.add_argument(
+            "-i",
+            "--input",
+            type=str,
+            default="./input/sweep.json",
+            help="Input filepath",
+        )
+        parser.add_argument(
+            "-o",
+            "--output_dir",
+            type=str,
+            default="./output/",
+            help="Output directory",
+        )

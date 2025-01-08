@@ -21,7 +21,7 @@ def main(input: List[str], output: str) -> None:
     df.to_pickle(output)
 
 
-@ApplicationFactory.register("sweep_merge")
+@ApplicationFactory.register("sweep_merge", "Merge results from multiple sweeps")
 class SweepMerge(Application):
 
     @staticmethod
@@ -36,5 +36,18 @@ class SweepMerge(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("-i", "--input", action="append", type=str, required=True)
-        parser.add_argument("-o", "--output", type=str, required=True)
+        parser.add_argument(
+            "-i",
+            "--input",
+            action="append",
+            type=str,
+            required=True,
+            help="Input filepath(s)",
+        )
+        parser.add_argument(
+            "-o",
+            "--output",
+            type=str,
+            required=True,
+            help="Output filepath",
+        )

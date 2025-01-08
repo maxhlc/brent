@@ -174,7 +174,7 @@ def main(input: str) -> None:
             pbar.update()
 
 
-@ApplicationFactory.register("cddis")
+@ApplicationFactory.register("cddis", "Download SP3 files from CDDIS")
 class CDDIS(Application):
 
     @staticmethod
@@ -188,4 +188,10 @@ class CDDIS(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("--input", type=str, default="./input/download.json")
+        parser.add_argument(
+            "-i",
+            "--input",
+            type=str,
+            default="./input/download.json",
+            help="Input filepath",
+        )

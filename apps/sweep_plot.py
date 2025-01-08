@@ -595,7 +595,7 @@ def main(input: str) -> None:
     plt.rcParams.update(RCPARAMS)
 
 
-@ApplicationFactory.register("sweep_plot")
+@ApplicationFactory.register("sweep_plot", "Plot sweep results")
 class SweepPlot(Application):
 
     @staticmethod
@@ -609,4 +609,4 @@ class SweepPlot(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("input", type=str)
+        parser.add_argument("input", type=str, help="Input filepath")

@@ -1,8 +1,9 @@
 # Internal imports
+# NOTE: applications are imported in a specific order
 from .application import Application, ApplicationFactory
-from .cddis import CDDIS
-from .generate_stles import GenerateSTLEs
 from .sweep import Sweep
 from .sweep_split import SweepSplit
-from .sweep_plot import SweepPlot
 from .sweep_merge import SweepMerge
+from .sweep_plot import SweepPlot
+from .cddis import CDDIS
+from .generate_stles import GenerateSTLEs

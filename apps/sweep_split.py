@@ -29,7 +29,7 @@ def main(input: str) -> None:
             json.dump(iconfig, fp, indent=4)
 
 
-@ApplicationFactory.register("sweep_split")
+@ApplicationFactory.register("sweep_split", "Split sweep input file")
 class SweepSplit(Application):
 
     @staticmethod
@@ -43,4 +43,4 @@ class SweepSplit(Application):
     @classmethod
     def addArguments(cls, parser: ArgumentParser) -> None:
         # Add arguments to parser
-        parser.add_argument("input", type=str)
+        parser.add_argument("input", type=str, help="Input filepath")
