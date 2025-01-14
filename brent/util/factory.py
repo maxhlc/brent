@@ -13,11 +13,11 @@ class Factory:
     @classmethod
     def register(cls, name: str):
         def inner_wrapper(class_type):
-            # Raise error if handler name already registered
+            # Raise error if name already registered
             if name in cls.registry:
                 raise RuntimeError(f"Class already registered: {name}")
 
-            # Store handler name and type
+            # Store class
             cls.registry[name] = class_type
 
             # Return handler
