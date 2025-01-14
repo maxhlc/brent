@@ -80,18 +80,40 @@ class FilepathGenerator:
         # Store output path
         self.output_path = output_path
 
-    def generate_filepath(self, name: str, provider: str, date: str) -> Filepaths:
+    def generate_filepath(self, name: str, provider: str, date: datetime) -> Filepaths:
+        # TODO: Ensure date is UTC
+
+        # Generate date-based arguments
+        date_args = [
+            "d",  # Day of the month
+            "m",  # Month of the year
+            "Y",  # Year (full)
+            "y",  # Year (w/o century)
+            "j",  # Day of the year
+            "H",  # Hour
+            "M",  # Minute
+            "S",  # Second
+        ]
+        date_kwargs = {arg: date.strftime(f"%{arg}") for arg in date_args}
+
+        # Calculate GPS time
+        # TODO: properly account for differences between UTC and GPS time
+        gps_datetime = date - datetime(1980, 1, 6)
+        gps_seconds = gps_datetime.total_seconds()
+        gps_week_ = gps_seconds / 604800.0
+        gps_week = int(gps_week_)
+
+        # Combine arguments
+        kwargs = {
+            "name": name,
+            "provider": provider,
+            **date_kwargs,
+            "gps_week": gps_week,
+        }
+
         # Generate filepaths
-        filename = self.filename_template.substitute(
-            name=name,
-            provider=provider,
-            date=date,
-        )
-        url_root = self.url_root_template.substitute(
-            name=name,
-            provider=provider,
-            date=date,
-        )
+        filename = self.filename_template.substitute(**kwargs)
+        url_root = self.url_root_template.substitute(**kwargs)
 
         # Create URL and output filepath
         url = os.path.join(url_root, filename)
@@ -130,7 +152,7 @@ def main(input: str) -> None:
 
     # Generate dates
     dates = [
-        date.strftime("%y%m%d")
+        date.to_pydatetime()
         for date in pd.date_range(
             start=parameters.start,
             end=parameters.end,
@@ -159,7 +181,7 @@ def main(input: str) -> None:
     bundles = [DownloadWorkerBundle(downloader, filepath) for filepath in filepaths]
 
     # Spawn multiprocessed loop to download files
-    with mp.Pool() as pool, tqdm(total=len(filepaths)) as pbar:
+    with mp.Pool() as pool, tqdm(total=len(filepaths), dynamic_ncols=True) as pbar:
         # Iterate through bundles
         for bundle, sucess in pool.imap_unordered(download_worker, bundles):
             # Print error if download unsuccessful

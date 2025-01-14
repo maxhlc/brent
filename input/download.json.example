@@ -1,8 +1,8 @@
 {
     "username": "<CDDIS username>",
     "password": "<CDDIS password>",
-    "filename_template": "$provider.orb.$name.$date.v70.sp3.gz",
-    "url_root_template": "https://cddis.nasa.gov/archive/slr/products/orbits/$name/$date/",
+    "filename_template": "${provider}.orb.${name}.${y}${m}${d}.v70.sp3.gz",
+    "url_root_template": "https://cddis.nasa.gov/archive/slr/products/orbits/${name}/${y}${m}${d}/",
     "providers": [
         "esa"
     ],
