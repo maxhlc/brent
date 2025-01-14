@@ -1,0 +1,11 @@
+{
+    "username": "<Space-Track username>",
+    "password": "<Space-Track password>",
+    "identifiers": [
+        8820,
+        19781
+    ],
+    "start": "2022-01-01",
+    "end": "2023-01-01",
+    "output_directory": "./download/tle/"
+}
