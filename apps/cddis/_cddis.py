@@ -40,7 +40,7 @@ class Parameters:
     frequency: str
 
     # Output directory
-    output_path: str
+    output_directory: str
 
     @staticmethod
     def load(fname: str) -> Parameters:
@@ -71,14 +71,14 @@ class FilepathGenerator:
         self,
         filename_template: str,
         url_root_template: str,
-        output_path: str,
+        output_directory: str,
     ) -> None:
         # Store path templates
         self.filename_template = Template(filename_template)
         self.url_root_template = Template(url_root_template)
 
         # Store output path
-        self.output_path = output_path
+        self.output_directory = output_directory
 
     def generate_filepath(self, name: str, provider: str, date: datetime) -> Filepaths:
         # TODO: Ensure date is UTC
@@ -117,7 +117,7 @@ class FilepathGenerator:
 
         # Create URL and output filepath
         url = os.path.join(url_root, filename)
-        output_filepath = os.path.join(self.output_path, filename)
+        output_filepath = os.path.join(self.output_directory, filename)
 
         # Return filepaths object
         return Filepaths(url, output_filepath)
@@ -164,7 +164,7 @@ def main(input: str) -> None:
     filepathgenerator = FilepathGenerator(
         parameters.filename_template,
         parameters.url_root_template,
-        parameters.output_path,
+        parameters.output_directory,
     )
 
     # Generate filepaths
