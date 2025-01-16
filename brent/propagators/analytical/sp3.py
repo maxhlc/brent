@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from glob import glob
+from functools import cache
 
 # Orekit imports
 import orekit
@@ -18,16 +19,20 @@ from brent.propagators import WrappedPropagator
 
 class SP3Propagator(WrappedPropagator):
 
+    # TODO: replace caching with propagator splitting by id in load method?
+    @cache
+    @staticmethod
+    def _parse(path: str) -> SP3:
+        # Return parsed SP3 file
+        return SP3Parser().parse(DataSource(path))
+
     @staticmethod
     def load(path: str, id: str) -> SP3Propagator:
         # Create glob of paths
         paths = glob(path)
 
-        # Create SP3 parser
-        sp3parser = SP3Parser()
-
         # Generate list of SP3s
-        sp3list = [sp3parser.parse(DataSource(path)) for path in paths]
+        sp3list = [SP3Propagator._parse(path) for path in paths]
 
         # Declare list for SP3 propagators
         sp3propagators = []
