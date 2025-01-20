@@ -151,93 +151,21 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
             # Return column vector of states
             return states_.ravel()
 
-        # Define queue-based predictor function
-        def fun_queue(p: np.ndarray, queue: mp.Queue) -> None:
-            states = fun(None, *p)
-            queue.put(states)
-
-        # Define parallel predictor function
-        # TODO: it would probably be more efficient to run multiple fits in parallel,
-        #       instead of Jacobian evaluations in parallel due to the overhead of
-        #       creating the subprocesses and the overlap in execution times
-        def fun_parallel(ps: np.ndarray) -> List[np.ndarray]:
-            # Calculate number of permutations
-            nps = ps.shape[0]
-
-            # Declare results queues
-            queues = nps * [mp.Queue()]
-
-            # Create processes
-            processes = [
-                mp.Process(
-                    target=fun_queue,
-                    args=(p, queue),
-                )
-                for p, queue in zip(ps, queues)
-            ]
-
-            # Start processes
-            [process.start() for process in processes]
-
-            # Wait for results
-            # TODO: add timeout
-            results = [queue.get() for queue in queues]
-
-            # Close processes
-            [process.terminate() for process in processes]
-
-            # Return results
-            return results
-
-        # Define Jacobian function
-        def jac(
-            _,
-            *p,
-            eps: float = 2e-16,
-            parallel: bool = False,
-        ) -> np.ndarray:
-            # Calculate perturbation vector
-            x = np.array(p)
-            dx = np.sqrt(eps) * np.abs(x)
-            dx[dx < 1e-16] = 1e-16
-
-            # Generate perturbations matrix
-            x_ = x + np.diag(dx)
-
-            # Create overall input matrix
-            xs = np.vstack((x, x_))
-
-            # Calculate reference and perturbed results
-            if parallel:
-                rs = fun_parallel(xs)
-            else:
-                rs = [fun(_, *ix) for ix in xs]
-
-            # Split reference and perturbed results
-            r0 = rs[0].reshape((-1, 1))
-            rp = np.column_stack(rs[1:])
-
-            # Calculate first-order finite difference
-            dfdx = (rp - r0) / dx.reshape((1, -1))
-
-            # Return Jacobian matrix
-            return dfdx
-
         # Extract (and scale) observations
         x = dates
         y = states / rscale.reshape((1, -1))
         y = y.ravel()
 
         # Execute optimiser
-        popt, pcov = scipy.optimize.curve_fit(
+        popt, pcov, infodict, mesg, ier = scipy.optimize.curve_fit(
             fun,
-            x,  # Not used by function
+            x,  # NOTE: not used by function
             y,
             p0,
-            # jac=jac,
             sigma=covarianceDiagonal,
             absolute_sigma=True,
             method="lm",
+            full_output=True,
         )
 
         # Store optimisation scaling and results
@@ -245,6 +173,9 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         self.rscale = rscale
         self.popt = popt
         self.pcov = pcov
+        self.infodict = infodict
+        self.mesg = mesg
+        self.ier = ier
 
         # Extract estimated state
         stateEstimated = self.getEstimatedState()
