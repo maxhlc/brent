@@ -1,5 +1,6 @@
 # Standard imports
 from copy import deepcopy
+from typing import List
 
 # Third-party imports
 import numpy as np
@@ -28,9 +29,9 @@ from brent.propagators import (
 
 def generate_observations(
     dates,
-    states,
-    covarianceProvider: Covariance = IdentityCovariance(),
-):
+    states: np.ndarray,
+    covarianceProvider: Covariance,
+) -> List[PV]:
     # Generate states in Orekit format
     states_ = [
         TimeStampedPVCoordinates(
