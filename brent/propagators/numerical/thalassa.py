@@ -176,6 +176,9 @@ class ThalassaNumericalPropagator(Propagator):
 
         # Return propagated states
         return states
+    
+    def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
+        raise RuntimeError("This method should not be called at any time")
 
     def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 600.0):
         # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
