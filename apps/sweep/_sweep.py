@@ -263,7 +263,7 @@ def main(input: str, output_dir: str) -> None:
             return
 
         # Save results
-        # TODO: handle repeated signals while saver is still saving
+        # NOTE: saver handles repeated signals
         saver.save(final=True)
 
         # Exit process

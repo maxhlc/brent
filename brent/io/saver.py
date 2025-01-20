@@ -11,6 +11,7 @@ from tqdm import tqdm
 # Internal imports
 import brent.util
 
+
 class Saver:
 
     def __init__(
@@ -60,6 +61,10 @@ class Saver:
         self.state = SaverState.RUNNING
 
     def update(self, result: dict) -> None:
+        # Throw error if saver not running
+        if self.state != SaverState.RUNNING:
+            raise RuntimeError("Saver not running")
+
         # Append result to results
         self.results.append(result)
 
@@ -68,13 +73,13 @@ class Saver:
             self.save()
 
     def save(self, final: bool = False) -> None:
-        # Check that saver is still running
-        if self.state != SaverState.RUNNING:
-            raise RuntimeError("Saver not running")
+        # Return if already in saving state
+        if (self.state == SaverState.FINAL_SAVE) or (self.state == SaverState.FINISHED):
+            return
 
-        # Set state
+        # Set saving state
         if final:
-            self.state = SaverState.FINAL
+            self.state = SaverState.FINAL_SAVE
 
         # Set filename suffix
         suffix = "" if final else f"_{self.checkpoint}"
@@ -102,7 +107,7 @@ class Saver:
         self.save_metadata()
 
         # Set state to finished
-        if self.state == SaverState.FINAL:
+        if self.state == SaverState.FINAL_SAVE:
             self.state = SaverState.FINISHED
 
     def save_metadata(self) -> None:
@@ -119,7 +124,7 @@ class Saver:
         elif self.state == SaverState.RUNNING:
             # TODO: save iteration progress?
             pass
-        elif self.state == SaverState.FINAL:
+        elif self.state == SaverState.FINAL_SAVE:
             # Final metadata
             lines = self._final_metdata()
         else:
@@ -217,5 +222,5 @@ class SaverState(Enum):
     DEINITIALISED = 1
     INITIALISED = 2
     RUNNING = 3
-    FINAL = 4
+    FINAL_SAVE = 4
     FINISHED = 5
