@@ -1,4 +1,5 @@
 conda-forge::orekit==12.0
+conda-forge::skyfield
 matplotlib
 numpy
 pandas

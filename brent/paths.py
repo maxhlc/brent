@@ -10,6 +10,9 @@ DATA_DIR = os.path.join(ROOT_DIR, "data")
 # Orekit paths
 DATA_OREKIT_DIR = os.path.join(DATA_DIR, "orekit")
 
+# Skyfield paths
+SKYFIELD_DIR = os.path.join(DATA_DIR, "skyfield")
+
 # THALASSA paths
 THALASSA_DIR = os.path.join(EXTERNAL_DIR, "thalassa")
 THALASSA_LIB_DIR = os.path.join(THALASSA_DIR, "lib")
