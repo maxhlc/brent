@@ -6,16 +6,16 @@ BRENT (Batch Regression for Estimating Noise in TLEs) is a tool under developmen
 ### Installation
 
 #### Python
-An environment with the required dependencies can be created from the requirements file in the repository:
+An environment file is provided to create a conda environment with all of the required dependencies:
 
 ```
-conda create -n <environment name> --file requirements.txt
+conda env create -f environment.yml
 ```
 
 The conda environment can then be activated:
 
 ```
-conda activate <environment name>
+conda activate brent
 ```
 
 #### Orekit
@@ -46,7 +46,7 @@ NOTE: SPICE kernels are loaded relative to the current working directory, unlike
 
 ### Usage
 
-The main script used with BRENT is `sweep.py` which conducts multiple fits based on permutations of supplied arguments. An example of a configuration file is available at `./input/sweep.json.example`.
+The main script used with BRENT is `main.py` which is the entry point for various applications in the `./apps/` directory. Many of these use configuration files with examples provided in the `./input/` directory.
 
 TLEs and ILRS orbit product data are expected in JSON and SP3 formats respectively.
 
