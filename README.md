@@ -26,10 +26,10 @@ Orekit requires data files (including physical parameters, reference frame param
 #### THALASSA
 THALASSA must be compiled (including its Python bindings) before it can be used by BRENT. THALASSA uses the CMake build system, and can be configured and built with the following commands:
 ```
-cmake -B ./external/thalassa/build -S ./external/thalassa
+cmake -B ./build -S .
 ```
 ```
-cmake --build ./external/thalassa/build
+cmake --build ./build
 ```
 
 It is recommended to execute these within the conda environment to ensure that the Python bindings are compatible with the environment's version of Python.
