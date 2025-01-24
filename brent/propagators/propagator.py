@@ -1,10 +1,13 @@
-# Third-party imports
+# Standard imports
 from abc import ABC, abstractmethod
+
+# Third-party imports
 import numpy as np
 
 # Orekit imports
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
+from org.orekit.propagation import Propagator as OrekitPropagator
 
 # Internal imports
 from brent import Constants
@@ -22,7 +25,7 @@ class Propagator(ABC):
 
 class WrappedPropagator(Propagator):
 
-    def __init__(self, propagator):
+    def __init__(self, propagator: OrekitPropagator) -> None:
         # Store propagator
         self.propagator = propagator
 
