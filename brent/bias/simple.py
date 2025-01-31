@@ -20,7 +20,7 @@ class SimplifiedAlongtrackSinusoidalBias(Bias):
     phase: float
     offset: float
 
-    def __model(self, t: np.ndarray) -> np.ndarray:
+    def _model(self, t: np.ndarray) -> np.ndarray:
         # Calculate model period
         period = 2.0 * np.pi / self.frequency
 
@@ -36,14 +36,17 @@ class SimplifiedAlongtrackSinusoidalBias(Bias):
 
         # Calculate offset dates
         dfunc = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
-        t = dfunc(dates - datetime(2022, 1, 1))
+        t = dfunc(dates - self.REFERENCE_EPOCH)
 
         # Calculate bias
         bias_RTN = np.zeros(states.shape)
-        bias_RTN[:, 1] = self.__model(t) * rmag
+        bias_RTN[:, 1] = self._model(t) * rmag
 
         # Rotate to inertial frame
         bias = brent.frames.RTN.transform(rtn, bias_RTN, reverse=True)
 
         # Return biases
         return bias
+
+    # Reference epoch when converting dates to days
+    REFERENCE_EPOCH = datetime(2022, 1, 1)
