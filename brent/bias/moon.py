@@ -1,3 +1,6 @@
+# Standard imports
+from dataclasses import dataclass
+
 # Third-party imports
 import numpy as np
 from skyfield.api import Loader, utc
@@ -6,25 +9,26 @@ from skyfield.elementslib import osculating_elements_of
 # Internal imports
 from .bias import Bias
 from .factory import BiasFactory
-from brent.frames import RTN, Keplerian
+from brent.frames import RTN
 from brent.paths import SKYFIELD_DIR
 
 
-def poly(x, *args):
-    return np.sum(np.array([arg * x**ii for ii, arg in enumerate(args)]), axis=0)
-
-
 @BiasFactory.register("moonanomaly")
+@dataclass
 class MoonAnomalyBias(Bias):
+    # Model parameters
+    amplitude: float
+    phase: float
+    offset: float
 
-    @classmethod
-    def _model(cls, ma: np.ndarray, amplitude, phase, offset) -> np.ndarray:
+    def _model(self, ma: np.ndarray) -> np.ndarray:
         # Return along-track bias
-        return amplitude * np.sin(ma + phase) + offset
+        return self.amplitude * np.sin(ma + self.phase) + self.offset
 
     @classmethod
     def _mean_anomaly(cls, dates) -> np.ndarray:
         # Generate dates
+        # TODO: enforce UTC at a project level?
         dates_ = [date.replace(tzinfo=utc) for date in dates]
         ts = cls.LOADER.timescale()
         t = ts.from_datetimes(dates_)
@@ -53,19 +57,9 @@ class MoonAnomalyBias(Bias):
         # Calculate mean anomaly of the Moon
         ma = self._mean_anomaly(dates)
 
-        # Calculate object RAAN
-        # TODO: specify gravitational parameter and frame
-        kep = Keplerian.from_cartesian(dates, states)
-        raan = kep[:, 3]
-
-        # Calculate model parameters
-        amplitude = poly(raan, *self.POLY_COEFF)
-        phase = 0.0
-        offset = 0.0
-
         # Calculate bias
         bias_RTN = np.zeros(states.shape)
-        bias_RTN[:, 1] = self._model(ma, amplitude, phase, offset) * rmag
+        bias_RTN[:, 1] = self._model(ma) * rmag
 
         # Rotate to inertial frame
         bias = RTN.transform(rtn, bias_RTN, reverse=True)
@@ -76,6 +70,3 @@ class MoonAnomalyBias(Bias):
     # Load ephemerides
     LOADER = Loader(SKYFIELD_DIR)
     OBJECTS = LOADER("de421.bsp")
-
-    # Amplitude-RAAN polynomial coefficients
-    POLY_COEFF = np.array([9.61421421e-05, -3.11943960e-05, 4.75645018e-06])
