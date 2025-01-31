@@ -54,13 +54,14 @@ class Keplerian:
         keplerian = KeplerianOrbit(pv, frame, mu)
 
         # Extract Keplerian elements
+        # NOTE: angles are wrapped to [0, 2pi)
         # TODO: angle type as input
         a = keplerian.getA()
         e = keplerian.getE()
         i = keplerian.getI()
-        raan = keplerian.getRightAscensionOfAscendingNode()
-        aop = keplerian.getPerigeeArgument()
-        ma = keplerian.getMeanAnomaly()
+        raan = keplerian.getRightAscensionOfAscendingNode() % (2.0 * np.pi)
+        aop = keplerian.getPerigeeArgument() % (2.0 * np.pi)
+        ma = keplerian.getMeanAnomaly() % (2.0 * np.pi)
 
         # Return extracted Keplerian elements
         return np.array([a, e, i, raan, aop, ma])
