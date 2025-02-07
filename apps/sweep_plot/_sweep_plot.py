@@ -55,7 +55,7 @@ INTERVALS = {
 
 THRESHOLDS = {
     # Calibration
-    "LAGEOS-1": 0.5,
+    "LAGEOS-1": 0.25,
     "LAGEOS-2": 0.75,
     "Etalon 1": 1,
     "Etalon 2": 1.5,
