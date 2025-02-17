@@ -29,13 +29,13 @@ SP3MAP = {
 
 LIMITS = {
     # Calibration
-    "LAGEOS-1": 10,
-    "LAGEOS-2": 10,
-    "Etalon 1": 10,
-    "Etalon 2": 10,
+    "LAGEOS-1": 8,
+    "LAGEOS-2": 8,
+    "Etalon 1": 8,
+    "Etalon 2": 8,
     # Test
-    "NAVSTAR 1": 40,
-    "NAVSTAR 2": 40,
+    "Navstar 1": 40,
+    "Navstar 2": 40,
     "Astra 1E": 100,
     "Astra 1H": 100,
 }
@@ -47,8 +47,8 @@ INTERVALS = {
     "Etalon 1": 1,
     "Etalon 2": 1,
     # Test
-    "NAVSTAR 1": 5,
-    "NAVSTAR 2": 5,
+    "Navstar 1": 5,
+    "Navstar 2": 5,
     "Astra 1E": 10,
     "Astra 1H": 10,
 }
@@ -60,8 +60,8 @@ THRESHOLDS = {
     "Etalon 1": 1,
     "Etalon 2": 1.5,
     # Test
-    "NAVSTAR 1": 5,
-    "NAVSTAR 2": 20,
+    "Navstar 1": 5,
+    "Navstar 2": 20,
     "Astra 1E": 20,
     "Astra 1H": 20,
 }
