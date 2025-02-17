@@ -1,5 +1,6 @@
 # Standard imports
 from copy import deepcopy
+from math import ceil
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ RCPARAMS = deepcopy(plt.rcParams)
 
 # Set output figure size
 FIGSIZE = (3.25, 3.25)
+FIGSIZE_LARGE = (6.6, 8.4)
 
 # Set font size
 plt.rcParams.update({"font.size": 7})
@@ -187,7 +189,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         fig.autofmt_xdate()
 
         # Add grid
-        plt.grid()
+        plt.grid(linewidth=0.25)
 
         # Set layout
         plt.tight_layout()
@@ -198,6 +200,145 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         # Close plot
         plt.close()
 
+def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
+    # Get unique objects (preserving order from limits list)
+    # TODO: make generic
+    unique_objects = np.unique(df["name"])
+    objects = [name for name in LIMITS if name in unique_objects]
+
+    # Create subplots
+    fig, axes = plt.subplots(
+        nrows=ceil(len(objects) / 2),
+        ncols=2,
+        sharex=True,
+        sharey=True,
+        figsize=FIGSIZE_LARGE,
+        constrained_layout=True,
+    )
+
+    # Calculate x-limits
+    # TODO: cleaner implementation
+    xlim = (
+        np.min(df["midPoint"]),
+        np.max(df["midPoint"]),
+    )
+
+    # Iterate through objects
+    for ax, object in zip(axes.ravel(), objects):
+        # Extract corresponding sub-table for object
+        df_object = df[df["name"] == object].copy()
+
+        # Extract x-y-z variables
+        x = df_object["midPoint"].to_numpy()
+        y = duration_to_days(df_object["fitDuration"])
+        z = df_object["fitErrorRMS"].to_numpy() / 1000.0
+
+        # Extract reference propagator
+        referencePropagators = np.unique(df_object["referencePropagator"])
+        referencePropagator = referencePropagators[0]
+
+        # Raise error for multiple reference propagators
+        if len(referencePropagators) != 1:
+            raise ValueError("Mixture of reference propagators")
+
+        # Find unique x-y coordinates
+        xu = np.unique(x)
+        yu = np.unique(y)
+
+        # Calculate mesh size
+        nx = len(xu)
+        ny = len(yu)
+
+        # Iterate through x-y coordinates
+        for ix in xu:
+            for iy in yu:
+                # Extract indicies
+                idx = x == ix
+                idy = y == iy
+
+                # Find intersection
+                idxy = np.logical_and(idx, idy)
+
+                # Calculate number of corresponding points
+                n = np.sum(idxy.astype(int))
+
+                # Add NaN point if the point doesn't exist
+                if n == 0:
+                    x = np.append(x, ix)
+                    y = np.append(y, iy)
+                    z = np.append(z, np.nan)
+                elif n > 1:
+                    raise ValueError(f"Repeated point at ({ix}, {iy})")
+
+        # Sort points into mesh
+        idx = np.lexsort((y, x)).reshape((nx, ny))
+
+        # Calculate z-limits
+        zupper = LIMITS[object]
+        zn = 2 * int(zupper // INTERVALS[object]) + 1
+        zlevels = np.linspace(0.0, zupper, zn)
+
+        # Configure colour map
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_over(cmap(1.0))
+
+        # Extend colour map if maximum value exceeded
+        extend = "max" if np.nanmax(z) > zupper else "neither"
+
+        # Plot mesh
+        ctf = ax.contourf(
+            x[idx],
+            y[idx],
+            z[idx],
+            zlevels,
+            norm=colors.Normalize(0, zupper, clip=True),
+            cmap=cmap,
+            extend=extend,
+        )
+
+        # Set limits
+        # TODO: y-axis
+        ax.set_xlim(xlim)
+
+        # Set title
+        ax.set_title(object, loc="right")
+
+        # Add colour bar
+        cbar = plt.colorbar(
+            ctf,
+            label=f"Position RMSE (w.r.t. {referencePropagator}) [km]",
+            extend=extend,
+            aspect=40,
+            ax=ax,
+        )
+        cbar.set_ticks(
+            [
+                INTERVALS[object] * n
+                for n in range(0, int(zupper // INTERVALS[object]) + 1)
+            ]
+        )
+
+        # Plot threshold
+        cbar.ax.plot([0, 1], [THRESHOLDS[object]] * 2, "r")
+
+        # Format dates
+        fig.autofmt_xdate()
+
+        # Add grid
+        ax.grid(linewidth=0.25)
+
+    # Set axis labels
+    for ax in axes[-1, :]:
+        ax.set_xlabel("Fit Window Midpoint [-]")
+
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Fit Window Size [days]")
+
+    # Export plot
+    plt.savefig(f"{fname}_duration_rmse_mesh.png", dpi=600)
+
+    # Close plot
+    plt.close()
 
 def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
@@ -279,7 +420,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         fig.autofmt_xdate()
 
         # Add grid
-        plt.grid()
+        plt.grid(linewidth=0.25)
 
         # Set layout
         plt.tight_layout()
@@ -574,6 +715,9 @@ def main(input: str) -> None:
 
         # Plot window mesh
         plot_window_mesh(df, input)
+
+        # Plot combined window mesh
+        plot_window_mesh_combined(df, input)
     elif (nwindow == 1) and (nsample > 1):
         # Plot sample mesh
         plot_sample_mesh(df, input)
