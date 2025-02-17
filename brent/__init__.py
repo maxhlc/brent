@@ -26,3 +26,4 @@ from . import frames
 from . import io
 from . import propagators
 from . import util
+from . import skyfield

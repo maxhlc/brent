@@ -3,14 +3,14 @@ from dataclasses import dataclass
 
 # Third-party imports
 import numpy as np
-from skyfield.api import Loader, utc
+from skyfield.api import utc
 from skyfield.elementslib import osculating_elements_of
 
 # Internal imports
 from .bias import Bias
 from .factory import BiasFactory
 from brent.frames import RTN
-from brent.paths import SKYFIELD_DIR
+from brent.skyfield import Skyfield
 
 
 @BiasFactory.register("moonanomaly")
@@ -30,12 +30,12 @@ class MoonAnomalyBias(Bias):
         # Generate dates
         # TODO: enforce UTC at a project level?
         dates_ = [date.replace(tzinfo=utc) for date in dates]
-        ts = cls.LOADER.timescale()
+        ts = Skyfield.LOADER.timescale()
         t = ts.from_datetimes(dates_)
 
         # Extract Earth and Moon from loaded ephemerides
-        earth = cls.OBJECTS["earth"]
-        moon = cls.OBJECTS["moon"]
+        earth = Skyfield.OBJECTS["earth"]
+        moon = Skyfield.OBJECTS["moon"]
 
         # Calculate Moon state and orbital elements
         moon_state = (moon - earth).at(t)
@@ -66,7 +66,3 @@ class MoonAnomalyBias(Bias):
 
         # Return biases
         return bias
-
-    # Load ephemerides
-    LOADER = Loader(SKYFIELD_DIR)
-    OBJECTS = LOADER("de421.bsp")
