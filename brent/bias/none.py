@@ -12,3 +12,7 @@ class NoneBias(Bias):
     def biases(self, dates, states) -> np.ndarray:
         # Return zero biases
         return np.zeros(states.shape)
+
+    @classmethod
+    def fit(cls, dates, states, reference, p0):
+        return NoneBias()
