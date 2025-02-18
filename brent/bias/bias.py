@@ -59,9 +59,30 @@ class Bias(ABC):
         # Calculate state deltas
         states_delta = states_debiased - reference
 
+        # Calculate position and velocity errors
+        position_error = np.linalg.norm(states_delta[:, 0:3], axis=1)
+        velocity_error = np.linalg.norm(states_delta[:, 3:6], axis=1)
+
+        # Calculate position and velocity error statistics
+        position_error_mean = np.mean(position_error)
+        position_error_std = np.std(position_error)
+        velocity_error_mean = np.mean(velocity_error)
+        velocity_error_std = np.std(velocity_error)
+
         # Calculate RMSEs
         position_rmse = rmse(states_delta[:, 0:3])
         velocity_rmse = rmse(states_delta[:, 3:6])
 
         # Return RMSEs
-        return position_rmse, velocity_rmse
+        return {
+            # Position
+            "position_error": position_error,
+            "position_error_mean": position_error_mean,
+            "position_error_std": position_error_std,
+            "position_rmse": position_rmse,
+            # Velocity
+            "velocity_error": velocity_error,
+            "velocity_error_mean": velocity_error_mean,
+            "velocity_error_std": velocity_error_std,
+            "velocity_rmse": velocity_rmse,
+        }
