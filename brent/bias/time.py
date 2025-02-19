@@ -16,16 +16,16 @@ from brent.frames import RTN, Keplerian
 class TimePositionBias(Bias):
     # Model parameters
     amplitude: float
-    frequency: float
+    period: float
     phase: float
     offset: float
 
     def _model(self, t: np.ndarray) -> np.ndarray:
         # Calculate model period
-        period = 2.0 * np.pi / self.frequency
+        frequency = 2.0 * np.pi / self.period
 
         # Return along-track bias
-        return self.amplitude * np.sin(period * (t + self.phase)) + self.offset
+        return self.amplitude * np.sin(frequency * (t + self.phase)) + self.offset
 
     def biases(self, dates, states) -> np.ndarray:
         # Calculate radial distances
@@ -56,7 +56,7 @@ class TimePositionBias(Bias):
 @dataclass
 class TimePositionCombinedBias(Bias):
     # Model parameters
-    frequency: float
+    period: float
     phase: float
     offset: float
     d: float
@@ -65,10 +65,10 @@ class TimePositionCombinedBias(Bias):
 
     def _model(self, t: np.ndarray, raan: np.ndarray) -> np.ndarray:
         # Calculate model period
-        period = 2.0 * np.pi / self.frequency
+        frequency = 2.0 * np.pi / self.period
 
         # Return along-track bias
-        return (self.d * np.sin(raan + self.e) + self.f) * np.sin(period * (t + self.phase)) + self.offset
+        return (self.d * np.sin(raan + self.e) + self.f) * np.sin(frequency * (t + self.phase)) + self.offset
 
     def biases(self, dates, states) -> np.ndarray:
         # Calculate radial distances
