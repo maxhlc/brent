@@ -13,9 +13,9 @@ from brent.frames import RTN, Keplerian
 from brent.skyfield import Skyfield
 
 
-@BiasFactory.register("moonanomaly")
+@BiasFactory.register("moonanomaly_position")
 @dataclass
-class MoonAnomalyBias(Bias):
+class MoonAnomalyPositionBias(Bias):
     # Model parameters
     amplitude: float
     phase: float
@@ -68,9 +68,9 @@ class MoonAnomalyBias(Bias):
         return bias
 
 
-@BiasFactory.register("moonanomalycombined")
+@BiasFactory.register("moonanomaly_position_combined")
 @dataclass
-class MoonAnomalyCombinedBias(Bias):
+class MoonAnomalyPositionCombinedBias(Bias):
     # Model parameters
     b: float
     c: float

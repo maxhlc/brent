@@ -11,9 +11,9 @@ from .bias import Bias
 from brent.frames import RTN, Keplerian
 
 
-@BiasFactory.register("time")
+@BiasFactory.register("time_position")
 @dataclass
-class TimeBias(Bias):
+class TimePositionBias(Bias):
     # Model parameters
     amplitude: float
     frequency: float
@@ -52,9 +52,9 @@ class TimeBias(Bias):
     REFERENCE_EPOCH = datetime(2000, 1, 1, 0, 0, 0, 0)
 
 
-@BiasFactory.register("timecombined")
+@BiasFactory.register("time_position_combined")
 @dataclass
-class TimeCombinedBias(Bias):
+class TimePositionCombinedBias(Bias):
     # Model parameters
     frequency: float
     phase: float

@@ -2,6 +2,6 @@
 # TODO: better names for bias models
 from .bias import Bias
 from .factory import BiasFactory
-from .moon import MoonAnomalyBias, MoonAnomalyCombinedBias
+from .moon import MoonAnomalyPositionBias, MoonAnomalyPositionCombinedBias
 from .none import NoneBias
-from .time import TimeBias, TimeCombinedBias
+from .time import TimePositionBias, TimePositionCombinedBias
