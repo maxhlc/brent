@@ -30,11 +30,14 @@ class Bias(ABC):
         return states_debiased
 
     @classmethod
-    def fit(cls, dates, states, reference, p0) -> Bias:
+    def fit(cls, dates, states, reference, p0, p_scale) -> Bias:
         # Fit wrapper function
         def func(_, *p):
+            # Scale parameters
+            params = np.array(p) * p_scale
+
             # Create bias model
-            model = cls(*p)
+            model = cls(*params)
 
             # Debias states
             states_debiased = model.debias(dates, states)
@@ -47,10 +50,18 @@ class Bias(ABC):
         x = np.zeros(y.shape)
 
         # Fit model
-        popt, _ = scipy.optimize.curve_fit(func, x, y, p0)
+        popt, _ = scipy.optimize.curve_fit(
+            f=func,
+            xdata=x,
+            ydata=y,
+            p0=p0 / p_scale,
+        )
+
+        # Scale parameters
+        params = popt * p_scale
 
         # Returned fitted bias model
-        return cls(*popt)
+        return cls(*params)
 
     def evaluate(self, dates, states, reference):
         # Calculate debiased states

@@ -14,5 +14,5 @@ class NoneBias(Bias):
         return np.zeros(states.shape)
 
     @classmethod
-    def fit(cls, dates, states, reference, p0):
+    def fit(cls, dates, states, reference, p0, p_scale):
         return NoneBias()
