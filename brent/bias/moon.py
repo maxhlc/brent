@@ -17,13 +17,13 @@ from brent.skyfield import Skyfield
 @dataclass
 class MoonAnomalyPositionBias(Bias):
     # Model parameters
-    amplitude: float
-    phase: float
-    offset: float
+    a: float
+    c: float
+    d: float
 
     def _model(self, ma: np.ndarray) -> np.ndarray:
         # Return along-track bias
-        return self.amplitude * np.sin(ma + self.phase) + self.offset
+        return self.a * np.sin(ma + self.c) + self.d
 
     @classmethod
     def _mean_anomaly(cls, dates) -> np.ndarray:
@@ -72,15 +72,15 @@ class MoonAnomalyPositionBias(Bias):
 @dataclass
 class MoonAnomalyPositionCombinedBias(Bias):
     # Model parameters
-    b: float
     c: float
     d: float
     e: float
     f: float
+    g: float
 
     def _model(self, ma: np.ndarray, raan: np.ndarray) -> np.ndarray:
         # Return along-track bias
-        return (self.d * np.sin(raan + self.e) + self.f) * np.sin(ma + self.b) + self.c
+        return (self.e * np.sin(raan + self.f) + self.g) * np.sin(ma + self.c) + self.d
 
     @classmethod
     def _mean_anomaly(cls, dates) -> np.ndarray:
