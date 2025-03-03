@@ -6,6 +6,7 @@ import queue
 # Third-party imports
 import numpy as np
 import pandas as pd
+import psutil
 
 # Orekit imports
 import orekit
@@ -169,18 +170,32 @@ class ThalassaNumericalPropagator(Propagator):
             states = results.get(timeout=timeout)
         except queue.Empty:
             # Raise error due to lack of results
-            raise RuntimeError("Propagation timed out")
+            raise RuntimeError(f"Propagation timed out after {timeout} seconds")
         finally:
             # Ensure process is terminated
-            process.terminate()
+            ThalassaNumericalPropagator._kill_process(process)
 
         # Return propagated states
         return states
-    
+
+    @staticmethod
+    def _kill_process(process: mp.Process) -> None:
+        # Get parent process
+        parent = psutil.Process(process.ident)
+
+        # Kill child processes
+        # NOTE: this is necessary due to THALASSA using fork: only killing
+        #       the parent process will result in the code hanging
+        for child in parent.children(recursive=True):
+            child.kill()
+
+        # Kill parent process
+        parent.kill()
+
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
         raise RuntimeError("This method should not be called at any time")
 
-    def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 600.0):
+    def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 60.0):
         # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
         #       creating and destroying large numbers of propagators using SPICE kernels
 
@@ -191,11 +206,8 @@ class ThalassaNumericalPropagator(Propagator):
 
         # Ensure dates increase/decrease monotonically
         diff = np.diff(dates)
-        monotonic = np.all(
-            diff >= np.timedelta64(0, "D"),
-        ) or np.all(
-            diff <= np.timedelta64(0, "D"),
-        )
+        zero = np.timedelta64(0, "D")
+        monotonic = np.all(diff >= zero) or np.all(diff <= zero)
         if not monotonic:
             raise ValueError("Dates must be monotonically increasing or decreasing")
 
