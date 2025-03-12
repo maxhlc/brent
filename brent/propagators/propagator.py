@@ -18,9 +18,17 @@ class Propagator(ABC):
     @abstractmethod
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray: ...
 
+    def _wrapped_propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
+        try:
+            # Return propagated state
+            return self._propagate(date, frame)
+        except:
+            # Return NaN state
+            return np.array(6 * [np.nan])
+
     def propagate(self, dates, frame=Constants.DEFAULT_ECI) -> np.ndarray:
         # Return states array
-        return np.array([self._propagate(date, frame) for date in dates])
+        return np.array([self._wrapped_propagate(date, frame) for date in dates])
 
 
 class WrappedPropagator(Propagator):
