@@ -1,3 +1,6 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from dataclasses import dataclass
 
@@ -12,6 +15,7 @@ from .bias import Bias
 from .factory import BiasFactory
 from brent.frames import RTN, Keplerian
 from brent.skyfield import Skyfield
+from brent.util import Wrap
 
 
 @BiasFactory.register("moonanomaly_position")
@@ -69,7 +73,23 @@ class MoonAnomalyPositionBias(Bias):
         return bias
 
     @classmethod
-    def fit(cls, dates, states, reference, p0, p_scale) -> Bias:
+    def _wrap(cls, a: float, c: float, d: float) -> tuple[float, float, float]:
+        # Check for negative amplitude
+        if a < 0.0:
+            # Flip amplitude sign
+            a *= -1.0
+
+            # Update phase by half period
+            c += np.pi
+
+        # Wrap phase by period
+        c = Wrap.half(c)
+
+        # Return wrapped parameters
+        return a, c, d
+
+    @classmethod
+    def fit(cls, dates, states, reference, p0, p_scale) -> MoonAnomalyPositionBias:
         # Calculate Moon's mean anomaly
         ma = cls._mean_anomaly(dates)
 
@@ -107,6 +127,9 @@ class MoonAnomalyPositionBias(Bias):
         # Scale parameters
         params = popt * p_scale
 
+        # Wrap parameters
+        params = cls._wrap(*params)
+
         # Returned fitted bias model
         return cls(*params)
 
@@ -122,8 +145,11 @@ class MoonAnomalyPositionCombinedBias(Bias):
     g: float
 
     def _model(self, ma: np.ndarray, raan: np.ndarray) -> np.ndarray:
+        # Calculate amplitude
+        amplitude = self.e * np.sin(raan + self.f) + self.g
+
         # Return along-track bias
-        return (self.e * np.sin(raan + self.f) + self.g) * np.sin(ma + self.c) + self.d
+        return amplitude * np.sin(ma + self.c) + self.d
 
     @classmethod
     def _mean_anomaly(cls, dates) -> np.ndarray:
@@ -172,7 +198,40 @@ class MoonAnomalyPositionCombinedBias(Bias):
         return bias
 
     @classmethod
-    def fit(cls, dates, states, reference, p0, p_scale) -> Bias:
+    def _wrap(
+        cls,
+        c: float,
+        d: float,
+        e: float,
+        f: float,
+        g: float,
+    ) -> tuple[float, float, float, float, float]:
+        # Wrap phase by period
+        c = Wrap.half(c)
+
+        # Check for negative amplitude
+        if e < 0.0:
+            # Flip amplitude sign
+            e *= -1.0
+
+            # Update phase by half period
+            f += np.pi
+
+        # Wrap phase by period
+        f = Wrap.half(f)
+
+        # Return wrapped parameters
+        return c, d, e, f, g
+
+    @classmethod
+    def fit(
+        cls,
+        dates,
+        states,
+        reference,
+        p0,
+        p_scale,
+    ) -> MoonAnomalyPositionCombinedBias:
         # Calculate Moon's mean anomaly
         ma = cls._mean_anomaly(dates)
 
@@ -213,6 +272,9 @@ class MoonAnomalyPositionCombinedBias(Bias):
 
         # Scale parameters
         params = popt * p_scale
+
+        # Wrap parameters
+        params = cls._wrap(*params)
 
         # Returned fitted bias model
         return cls(*params)

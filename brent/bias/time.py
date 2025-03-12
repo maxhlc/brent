@@ -1,3 +1,6 @@
+# Future imports
+from __future__ import annotations
+
 # Standard imports
 from dataclasses import dataclass
 from datetime import datetime
@@ -10,6 +13,7 @@ import scipy.optimize
 from .factory import BiasFactory
 from .bias import Bias
 from brent.frames import RTN, Keplerian
+from brent.util import Wrap
 
 
 @BiasFactory.register("time_position")
@@ -50,7 +54,29 @@ class TimePositionBias(Bias):
         return bias
 
     @classmethod
-    def fit(cls, dates, states, reference, p0, p_scale) -> Bias:
+    def _wrap(
+        cls,
+        a: float,
+        b: float,
+        c: float,
+        d: float,
+    ) -> tuple[float, float, float, float]:
+        # Check for negative amplitude
+        if a < 0.0:
+            # Flip amplitude sign
+            a *= -1.0
+
+            # Update phase by half period
+            c += 0.5 * b
+
+        # Wrap phase by period
+        c = Wrap.half(c, b)
+
+        # Return wrapped parameters
+        return a, b, c, d
+
+    @classmethod
+    def fit(cls, dates, states, reference, p0, p_scale) -> TimePositionBias:
         # Calculate offset dates
         dfunc = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
         t = dfunc(dates - cls.REFERENCE_EPOCH)
@@ -89,6 +115,9 @@ class TimePositionBias(Bias):
         # Scale parameters
         params = popt * p_scale
 
+        # Wrap parameters
+        params = cls._wrap(*params)
+
         # Returned fitted bias model
         return cls(*params)
 
@@ -111,8 +140,11 @@ class TimePositionCombinedBias(Bias):
         # Calculate model period
         frequency = 2.0 * np.pi / self.b
 
+        # Calculate amplitudes
+        amplitude = self.e * np.sin(raan + self.f) + self.g
+
         # Return along-track bias
-        return (self.e * np.sin(raan + self.f) + self.g) * np.sin(frequency * (t + self.c)) + self.d
+        return amplitude * np.sin(frequency * (t + self.c)) + self.d
 
     def biases(self, dates, states) -> np.ndarray:
         # Calculate radial distances
@@ -140,7 +172,34 @@ class TimePositionCombinedBias(Bias):
         return bias
 
     @classmethod
-    def fit(cls, dates, states, reference, p0, p_scale) -> Bias:
+    def _wrap(
+        cls,
+        b: float,
+        c: float,
+        d: float,
+        e: float,
+        f: float,
+        g: float,
+    ) -> tuple[float, float, float, float, float, float]:
+        # Wrap phase by period
+        c = Wrap.half(c, b)
+
+        # Check for negative amplitude
+        if e < 0.0:
+            # Flip amplitude sign
+            e *= -1.0
+
+            # Update phase by half period
+            f += np.pi
+
+        # Wrap phase by period
+        f = Wrap.half(f)
+
+        # Return wrapped parameters
+        return b, c, d, e, f, g
+
+    @classmethod
+    def fit(cls, dates, states, reference, p0, p_scale) -> TimePositionCombinedBias:
         # Calculate offset dates
         dfunc = np.vectorize(lambda x: x / np.timedelta64(1, "D"))
         t = dfunc(dates - cls.REFERENCE_EPOCH)
@@ -182,6 +241,9 @@ class TimePositionCombinedBias(Bias):
 
         # Scale parameters
         params = popt * p_scale
+
+        # Wrap parameters
+        params = cls._wrap(*params)
 
         # Returned fitted bias model
         return cls(*params)
