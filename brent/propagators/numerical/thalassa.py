@@ -115,34 +115,45 @@ class ThalassaProcess(mp.Process):
         # Declare model
         model = pythalassa.Model()
 
-        # Set geopotential model
-        model.insgrav = (
-            pythalassa.NONSPHERICAL if parameters.potential else pythalassa.SPHERICAL
-        )
-        model.gdeg = parameters.potential_degree
-        model.gord = parameters.potential_order
+        # Enable/disable geopotential model
+        if parameters.potential:
+            model.insgrav = pythalassa.NONSPHERICAL
+            model.gdeg = parameters.potential_degree
+            model.gord = parameters.potential_order
+        else:
+            model.insgrav = pythalassa.SPHERICAL
+            model.gdeg = 0
+            model.gord = 0
 
-        # Set lunisolar perturbations
+        # Set ephemeris source
         model.iephem = pythalassa.EPHEM_DE431
-        model.isun = (
-            pythalassa.SUN_ENABLED if parameters.sun else pythalassa.SUN_DISABLED
-        )
-        model.imoon = (
-            pythalassa.MOON_ENABLED if parameters.moon else pythalassa.MOON_DISABLED
-        )
 
-        # Set drag model
-        model.idrag = (
-            pythalassa.DRAG_NRLMSISE00 if parameters.drag else pythalassa.DRAG_DISABLED
-        )
+        # Enable/disable Sun
+        if parameters.sun:
+            model.isun = pythalassa.SUN_ENABLED
+        else:
+            model.isun = pythalassa.SUN_DISABLED
+
+        # Enable/disable Moon
+        if parameters.moon:
+            model.imoon = pythalassa.MOON_ENABLED
+        else:
+            model.imoon = pythalassa.MOON_DISABLED
+
+        # Enable/disable drag model
+        if parameters.drag:
+            model.idrag = pythalassa.DRAG_NRLMSISE00
+        else:
+            model.idrag = pythalassa.DRAG_DISABLED
+
+        # Set Solar flux model
         model.iF107 = pythalassa.FLUX_VARIABLE
 
-        # Set SRP model
-        model.iSRP = (
-            pythalassa.SRP_ENABLED_CONICAL
-            if parameters.srp
-            else pythalassa.SRP_DISABLED
-        )
+        # Enable/disable SRP model
+        if parameters.srp:
+            model.iSRP = pythalassa.SRP_ENABLED_CONICAL
+        else:
+            model.iSRP = pythalassa.SRP_DISABLED
 
         # Return model
         return model
