@@ -6,7 +6,6 @@ import queue
 # Third-party imports
 import numpy as np
 import pandas as pd
-import psutil
 
 # Orekit imports
 import orekit
@@ -43,159 +42,176 @@ def date_to_MJD(date: datetime | np.datetime64) -> float:
 dates_to_MJD = np.vectorize(date_to_MJD)
 
 
+class ThalassaProcess(mp.Process):
+
+    def __init__(
+        self,
+        dates,
+        state,
+        parameters: NumericalPropagatorParameters,
+        *args,
+        **kwargs,
+    ):
+        # Initialise parent class
+        super().__init__(daemon=True, *args, **kwargs)
+
+        # Store dates and state
+        self.dates = dates
+        self.state = state
+
+        # Store parameters
+        self.parameters = parameters
+
+        # Results queue
+        self.results = mp.Queue(maxsize=1)
+
+    def run(self):
+        # Get THALASSA settings
+        model = self.getModel(self.parameters)
+        paths = self.getPaths()
+        settings = self.getSettings()
+        spacecraft = self.getSpacecraft(self.parameters)
+
+        # Create propagator
+        propagator = pythalassa.Propagator(model, paths, settings, spacecraft)
+
+        # Convert state vector to [km] and [km/s]
+        state_ = self.state.ravel() / 1000.0
+
+        # Convert dates to MJD floats
+        dates_ = dates_to_MJD(self.dates)
+
+        # Propagate
+        states_: np.ndarray = propagator.propagate(dates_, state_)
+
+        # Transpose to row vectors and convert to [m] and [m/s]
+        states = states_.T * 1000.0
+
+        # Put states onto results queue
+        self.results.put(states)
+
+    def propagate(self, timeout: float) -> np.ndarray:
+        # TODO: ensure only called in main process?
+        # Try to propagate
+        try:
+            # Start propagation
+            self.start()
+
+            # Wait for results
+            states = self.results.get(timeout=timeout)
+        except queue.Empty:
+            # Raise error due to lack of results
+            # TODO: switch to returning NaNs?
+            raise RuntimeError(f"Propagation timed out after {timeout} seconds")
+        finally:
+            # Terminate process
+            self.terminate()
+
+        # Return propagated states
+        return states
+
+    @classmethod
+    def getModel(cls, parameters: NumericalPropagatorParameters) -> pythalassa.Model:
+        # Declare model
+        model = pythalassa.Model()
+
+        # Set geopotential model
+        model.insgrav = (
+            pythalassa.NONSPHERICAL if parameters.potential else pythalassa.SPHERICAL
+        )
+        model.gdeg = parameters.potential_degree
+        model.gord = parameters.potential_order
+
+        # Set lunisolar perturbations
+        model.iephem = pythalassa.EPHEM_DE431
+        model.isun = (
+            pythalassa.SUN_ENABLED if parameters.sun else pythalassa.SUN_DISABLED
+        )
+        model.imoon = (
+            pythalassa.MOON_ENABLED if parameters.moon else pythalassa.MOON_DISABLED
+        )
+
+        # Set drag model
+        model.idrag = (
+            pythalassa.DRAG_NRLMSISE00 if parameters.drag else pythalassa.DRAG_DISABLED
+        )
+        model.iF107 = pythalassa.FLUX_VARIABLE
+
+        # Set SRP model
+        model.iSRP = (
+            pythalassa.SRP_ENABLED_CONICAL
+            if parameters.srp
+            else pythalassa.SRP_DISABLED
+        )
+
+        # Return model
+        return model
+
+    @classmethod
+    def getPaths(cls) -> pythalassa.Paths:
+        # Declare paths
+        paths = pythalassa.Paths()
+        paths.phys_path = brent.paths.THALASSA_DATA_PHYSICAL
+        paths.earth_path = brent.paths.THALASSA_DATA_EARTH
+        paths.kernel_path = brent.paths.THALASSA_DATA_KERNEL
+        paths.eop_path = brent.paths.THALASSA_DATA_EOP
+
+        # Return paths
+        return paths
+
+    @classmethod
+    def getSettings(cls) -> pythalassa.Settings:
+        # Declare settings
+        # TODO: set
+        settings = pythalassa.Settings()
+        settings.eqs = pythalassa.EDROMO_C  # TODO: add options for different methods?
+        settings.tol = 1e-10
+
+        # Return settings
+        return settings
+
+    @classmethod
+    def getSpacecraft(
+        cls,
+        parameters: NumericalPropagatorParameters,
+    ) -> pythalassa.Spacecraft:
+        # Declare spacecraft
+        spacecraft = pythalassa.Spacecraft()
+
+        # Set mass
+        spacecraft.mass = parameters.mass
+
+        # Set drag properties
+        spacecraft.area_drag = parameters.area_drag
+        spacecraft.cd = parameters.cd
+
+        # Set SRP properties
+        spacecraft.area_srp = parameters.area_srp
+        spacecraft.cr = parameters.cr
+
+        # Return spacecraft
+        return spacecraft
+
+
 class ThalassaNumericalPropagator(Propagator):
 
     def __init__(
         self,
         date: datetime,
         state: np.ndarray,
-        model: NumericalPropagatorParameters,
+        parameters: NumericalPropagatorParameters,
     ) -> None:
         # Store initial date and state
         self.date = date
         self.state = state
 
-        # Declare model
-        self.model = pythalassa.Model()
-        # Set geopotential model
-        self.model.insgrav = (
-            pythalassa.NONSPHERICAL if model.potential else pythalassa.SPHERICAL
-        )
-        self.model.gdeg = model.potential_degree
-        self.model.gord = model.potential_order
-        # Set lunisolar perturbations
-        self.model.iephem = pythalassa.EPHEM_DE431
-        self.model.isun = (
-            pythalassa.SUN_ENABLED if model.sun else pythalassa.SUN_DISABLED
-        )
-        self.model.imoon = (
-            pythalassa.MOON_ENABLED if model.moon else pythalassa.MOON_DISABLED
-        )
-        # Set drag model
-        self.model.idrag = (
-            pythalassa.DRAG_NRLMSISE00 if model.drag else pythalassa.DRAG_DISABLED
-        )
-        self.model.iF107 = pythalassa.FLUX_VARIABLE
-        # Set SRP model
-        self.model.iSRP = (
-            pythalassa.SRP_ENABLED_CONICAL if model.srp else pythalassa.SRP_DISABLED
-        )
-
-        # Declare paths
-        self.paths = pythalassa.Paths()
-        self.paths.phys_path = brent.paths.THALASSA_DATA_PHYSICAL
-        self.paths.earth_path = brent.paths.THALASSA_DATA_EARTH
-        self.paths.kernel_path = brent.paths.THALASSA_DATA_KERNEL
-        self.paths.eop_path = brent.paths.THALASSA_DATA_EOP
-
-        # Declare settings
-        # TODO: set
-        self.settings = pythalassa.Settings()
-        self.settings.eqs = (
-            pythalassa.EDROMO_C
-        )  # TODO: add options for different methods?
-        self.settings.tol = 1e-10
-
-        # Declare spacecraft
-        self.spacecraft = pythalassa.Spacecraft()
-        # Set mass
-        self.spacecraft.mass = model.mass
-        # Set drag properties
-        self.spacecraft.area_drag = model.area_drag
-        self.spacecraft.cd = model.cd
-        # Set SRP properties
-        self.spacecraft.area_srp = model.area_srp
-        self.spacecraft.cr = model.cr
-
-    @staticmethod
-    def _static_propagate(
-        results: mp.Queue,
-        model: pythalassa.Model,
-        paths: pythalassa.Paths,
-        settings: pythalassa.Settings,
-        spacecraft: pythalassa.Spacecraft,
-        dates,
-        state,
-    ) -> None:
-        # Create propagator
-        propagator = pythalassa.Propagator(model, paths, settings, spacecraft)
-
-        # Convert state vector to [km] and [km/s]
-        state_ = state.ravel() / 1000.0
-
-        # Convert dates to MJD floats
-        dates_ = dates_to_MJD(dates)
-
-        # Propagate
-        states_ = propagator.propagate(dates_, state_)
-
-        # Transpose to row vectors and convert to [m] and [m/s]
-        states = states_.T * 1000.0
-
-        # Put states onto results queue
-        results.put(states)
-
-    def _get_process(
-        self,
-        results: mp.Queue,
-        dates: pd.DatetimeIndex,
-        state: np.ndarray,
-    ) -> mp.Process:
-        # Return propagation process
-        return mp.Process(
-            target=ThalassaNumericalPropagator._static_propagate,
-            args=(
-                results,
-                self.model,
-                self.paths,
-                self.settings,
-                self.spacecraft,
-                dates,
-                state,
-            ),
-        )
-
-    @staticmethod
-    def _run_process(
-        results: mp.Queue,
-        process: mp.Process,
-        timeout: float,
-    ) -> np.ndarray:
-        # Try to propagate
-        try:
-            # Start propagation
-            process.start()
-
-            # Wait for results
-            states = results.get(timeout=timeout)
-        except queue.Empty:
-            # Raise error due to lack of results
-            raise RuntimeError(f"Propagation timed out after {timeout} seconds")
-        finally:
-            # Ensure process is terminated
-            ThalassaNumericalPropagator._kill_process(process)
-
-        # Return propagated states
-        return states
-
-    @staticmethod
-    def _kill_process(process: mp.Process) -> None:
-        # Get parent process
-        parent = psutil.Process(process.ident)
-
-        # Kill child processes
-        # NOTE: this is necessary due to THALASSA using fork: only killing
-        #       the parent process will result in the code hanging
-        for child in parent.children(recursive=True):
-            child.kill()
-
-        # Kill parent process
-        parent.kill()
+        # Store parameters
+        self.parameters = parameters
 
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
         raise RuntimeError("This method should not be called at any time")
 
-    def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 60.0):
+    def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 10.0):
         # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
         #       creating and destroying large numbers of propagators using SPICE kernels
 
@@ -219,14 +235,11 @@ class ThalassaNumericalPropagator(Propagator):
             # Use stored initial state
             state = self.state
 
-        # Create results queue
-        results = mp.Queue()
-
         # Create propagation process
-        process = self._get_process(results, dates, state)
+        process = ThalassaProcess(dates, state, self.parameters)
 
         # Propagate
-        states = ThalassaNumericalPropagator._run_process(results, process, timeout)
+        states = process.propagate(timeout)
 
         # Return states
         return states
