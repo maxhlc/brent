@@ -122,7 +122,8 @@ class TimePositionBias(Bias):
         return cls(*params)
 
     # Reference epoch when converting dates to days
-    REFERENCE_EPOCH = datetime(2000, 1, 1, 0, 0, 0, 0)
+    # NOTE: approximately J2000 (small difference between UTC and TT)
+    REFERENCE_EPOCH = datetime(2000, 1, 1, 12, 0, 0, 0)
 
 
 @BiasFactory.register("time_position_combined")
@@ -249,4 +250,5 @@ class TimePositionCombinedBias(Bias):
         return cls(*params)
 
     # Reference epoch when converting dates to days
-    REFERENCE_EPOCH = datetime(2000, 1, 1, 0, 0, 0, 0)
+    # NOTE: approximately J2000 (small difference between UTC and TT)
+    REFERENCE_EPOCH = datetime(2000, 1, 1, 12, 0, 0, 0)
