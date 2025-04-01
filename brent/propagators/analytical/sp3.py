@@ -32,7 +32,19 @@ class SP3Propagator(WrappedPropagator):
         paths = glob(path)
 
         # Generate list of SP3s
-        sp3list = [SP3Propagator._parse(path) for path in paths]
+        sp3list: list[SP3] = []
+
+        # Iterate through paths
+        for path in paths:
+            try:
+                # Load SP3 file
+                sp3 = SP3Propagator._parse(path)
+
+                # Append to list of SP3s
+                sp3list.append(sp3)
+            except orekit.JavaError as e:
+                # TODO: log error?
+                pass
 
         # Declare list for SP3 propagators
         sp3propagators = []
