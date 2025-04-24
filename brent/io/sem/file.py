@@ -40,7 +40,7 @@ class SEMFile:
         return "\n".join(sections)
 
     @classmethod
-    def deserialise(cls, string: str) -> SEMFile:
+    def deserialise(cls, string: str, year: None | int = None) -> SEMFile:
         # Split string into sections
         sections = string.split("\n\n")
 
@@ -48,7 +48,7 @@ class SEMFile:
         sections = [section for section in sections if section != ""]
 
         # Deserialise header
-        header = SEMHeader.deserialise(sections[0])
+        header = SEMHeader.deserialise(sections[0], year)
 
         # Deserialise records
         records = [SEMRecord.deserialise(section) for section in sections[1:]]
@@ -66,11 +66,11 @@ class SEMFile:
             fp.write(string)
 
     @classmethod
-    def load(cls, name: str) -> SEMFile:
+    def load(cls, name: str, year: None | int = None) -> SEMFile:
         # Open file
         with open(name) as fp:
             # Read contents
             string = fp.read()
 
         # Return deserialised file
-        return SEMFile.deserialise(string)
+        return SEMFile.deserialise(string, year)

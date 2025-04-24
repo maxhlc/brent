@@ -20,6 +20,9 @@ class SEMHeader:
     # Seconds since start of GPS week
     seconds: int
 
+    # Year
+    year: None | int = None
+
     def asdict(self) -> dict[str, int | str]:
         # Return header as dictionary
         return asdict(self)
@@ -39,7 +42,7 @@ class SEMHeader:
         return "\n".join(lines)
 
     @classmethod
-    def deserialise(cls, string: str) -> SEMHeader:
+    def deserialise(cls, string: str, year: None | int = None) -> SEMHeader:
         # Split string into lines
         lines = string.splitlines()
 
@@ -54,4 +57,4 @@ class SEMHeader:
         seconds = int(lines[1][1])
 
         # Return parsed header
-        return SEMHeader(records, title, week, seconds)
+        return SEMHeader(records, title, week, seconds, year)
