@@ -15,7 +15,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # External imports
-from brent.util import CDDISDownloader
+from brent.download import CDDISDownloader
 
 
 @dataclass

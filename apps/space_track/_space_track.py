@@ -8,7 +8,7 @@ import json
 from typing import List
 
 # External imports
-import brent
+from brent.download import SpaceTrackDownloader
 
 
 @dataclass
@@ -52,7 +52,7 @@ def main(input: str) -> None:
     parameters = Parameters.load(input)
 
     # Create downloader
-    downloader = brent.util.SpaceTrackDownloader(
+    downloader = SpaceTrackDownloader(
         parameters.username,
         parameters.password,
     )
