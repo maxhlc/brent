@@ -85,27 +85,30 @@ class SEMRecord:
         # Split string into lines
         lines = string.splitlines()
 
+        # Split lines into words
+        lines = [line.split() for line in lines]
+
         # Deserialise values
-        prn = int(lines[0][0:2])
+        prn = int(lines[0][0])
         #
-        svn = int(lines[1][0:3])
+        svn = int(lines[1][0])
         #
-        ura = int(lines[2][0:2])
+        ura = int(lines[2][0])
         #
-        ecc = float(lines[3][0:21])
-        inc = float(lines[3][22:43])
-        omd = float(lines[3][44:66])
+        ecc = float(lines[3][0])
+        inc = float(lines[3][1])
+        omd = float(lines[3][2])
         #
-        sma = float(lines[4][0:21])
-        lon = float(lines[4][22:43])
-        aop = float(lines[4][44:66])
+        sma = float(lines[4][0])
+        lon = float(lines[4][1])
+        aop = float(lines[4][2])
         #
-        ma0 = float(lines[5][0:21])
-        af0 = float(lines[5][22:43])
-        af1 = float(lines[5][44:66])
+        ma0 = float(lines[5][0])
+        af0 = float(lines[5][1])
+        af1 = float(lines[5][2])
         #
-        health = int(lines[6][0:2])
-        config = int(lines[7][0:2])
+        health = int(lines[6][0])
+        config = int(lines[7][0])
 
         # Return deserialised record
         return SEMRecord(

@@ -43,12 +43,15 @@ class SEMHeader:
         # Split string into lines
         lines = string.splitlines()
 
+        # Split lines into words
+        lines = [line.split() for line in lines]
+
         # Deserialise values
-        records = int(lines[0][0:2])
-        title = lines[0][4:28]
+        records = int(lines[0][0])
+        title = lines[0][1]  # TODO: deal with titles containing spaces
         #
-        week = int(lines[1][1:5])
-        seconds = int(lines[1][6:12])
+        week = int(lines[1][0])
+        seconds = int(lines[1][1])
 
         # Return parsed header
         return SEMHeader(records, title, week, seconds)
