@@ -29,7 +29,7 @@ class SP3Propagator(WrappedPropagator):
     @staticmethod
     def load(path: str, id: str) -> SP3Propagator:
         # Create glob of paths
-        paths = glob(path)
+        paths = glob(path, recursive=True)
 
         # Generate list of SP3s
         sp3list: list[SP3] = []
