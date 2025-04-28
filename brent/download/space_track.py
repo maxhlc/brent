@@ -87,10 +87,7 @@ class SpaceTrackDownloader:
                 filepath = os.path.join(output_directory, f"{identifier}.json")
 
                 # Ensure file directory exists
-                os.makedirs(
-                    os.path.dirname(os.path.abspath(filepath)),
-                    exist_ok=True,
-                )
+                os.makedirs(os.path.dirname(os.path.abspath(filepath)), exist_ok=True)
 
                 # Save element sets
                 with open(filepath, "w") as fp:
