@@ -9,3 +9,4 @@ from .space_track import SpaceTrack
 from .cddis import CDDIS
 from .generate_stles import GenerateSTLEs
 from .sem_download import SEMDownload
+from .sem_merge import SEMMerge
