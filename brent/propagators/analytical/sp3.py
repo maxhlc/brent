@@ -101,18 +101,25 @@ class SP3Propagator(WrappedPropagator):
 
                 # Append to list of SP3s
                 sp3list.append(sp3)
-            except orekit.JavaError as e:
+            except orekit.JavaError:
                 # TODO: log error?
                 pass
 
         # Extract SP3 identifiers
         sp3headers = [sp3.getHeader() for sp3 in sp3list]
-        sp3ids = set(
-            [id for sp3header in sp3headers for id in list(sp3header.getSatIds())]
-        )
+        sp3ids = [id for sp3header in sp3headers for id in list(sp3header.getSatIds())]
+        sp3ids = sorted(list(set(sp3ids)))
 
         # Generate propagators
-        propagators = {id: cls._generate(sp3list, id) for id in sp3ids}
+        propagators = {}
+        for id in sp3ids:
+            try:
+                # Create and store propagator
+                propagators[id] = cls._generate(sp3list, id)
+            except orekit.JavaError:
+                # Silently drop on error
+                # TODO: log error?
+                continue
 
         # Return propagators
         return propagators
