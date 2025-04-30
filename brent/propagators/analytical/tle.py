@@ -3,6 +3,8 @@ from __future__ import annotations
 
 # Standard imports
 from datetime import datetime
+from glob import glob
+from functools import cache
 
 # Third-party imports
 import numpy as np
@@ -56,19 +58,35 @@ class TLEPropagator(Propagator):
         # Return propagated state
         return propagator._propagate(date, frame)
 
+    @cache
     @staticmethod
+    def _parse(path: str) -> pd.DataFrame:
+        # Return parsed TLE file
+        return pd.read_json(path)
+
+    @classmethod
     def _load(
+        cls,
         path: str,
         start: datetime = datetime.min,
         end: datetime = datetime.max,
+        norad: int | None = None,
+        cospar: str | None = None,
     ) -> list[TLE]:
         # Read TLEs
-        # TODO: read glob like SP3 loader
-        tles = pd.read_json(path)
+        paths = sorted(glob(path, recursive=True))
+        tles = pd.concat([cls._parse(path) for path in paths], ignore_index=True)
 
-        # Throw error if file contains multiple different objects
-        if tles["OBJECT_ID"].nunique() != 1:
-            raise ValueError("Multiple object identifiers in TLE file")
+        # Filter TLEs
+        if norad is not None:
+            tles = tles[tles["NORAD_CAT_ID"] == norad]
+        if cospar is not None:
+            tles = tles[tles["OBJECT_ID"] == cospar]
+
+        # Throw error if file contains zero or multiple different objects
+        nunique = tles["OBJECT_ID"].nunique()
+        if nunique != 1:
+            raise ValueError(f"{nunique} object identifiers")
 
         # Sort by epoch and creation date
         tles.sort_values(["EPOCH", "CREATION_DATE"], inplace=True)
@@ -93,14 +111,17 @@ class TLEPropagator(Propagator):
         # Return filtered TLEs
         return tles
 
-    @staticmethod
+    @classmethod
     def load(
+        cls,
         path: str,
         start: datetime = datetime.min,
         end: datetime = datetime.max,
+        norad: int | None = None,
+        cospar: str | None = None,
     ) -> TLEPropagator:
         # Load TLEs
-        tles = TLEPropagator._load(path, start, end)
+        tles = cls._load(path, start, end, norad, cospar)
 
         # Return TLE propagator
         return TLEPropagator(tles)
