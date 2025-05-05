@@ -3,7 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from glob import glob
-from functools import cache
+from functools import lru_cache
 
 # Orekit imports
 import orekit
@@ -20,7 +20,7 @@ from brent.propagators import WrappedPropagator
 class SP3Propagator(WrappedPropagator):
 
     # TODO: replace caching with propagator splitting by id in load method?
-    @cache
+    @lru_cache(maxsize=128)
     @staticmethod
     def _parse(path: str) -> SP3:
         # Return parsed SP3 file
