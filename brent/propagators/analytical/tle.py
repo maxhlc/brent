@@ -4,7 +4,7 @@ from __future__ import annotations
 # Standard imports
 from datetime import datetime
 from glob import glob
-from functools import cache
+from functools import lru_cache
 
 # Third-party imports
 import numpy as np
@@ -58,7 +58,7 @@ class TLEPropagator(Propagator):
         # Return propagated state
         return propagator._propagate(date, frame)
 
-    @cache
+    @lru_cache(maxsize=256)
     @staticmethod
     def _parse(path: str) -> pd.DataFrame:
         # Return parsed TLE file
