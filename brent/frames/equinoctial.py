@@ -10,11 +10,12 @@ import pandas as pd
 import orekit
 from orekit.pyhelpers import datetime_to_absolutedate
 from org.orekit.frames import Frame
-from org.orekit.orbits import EquinoctialOrbit, PositionAngleType
+from org.orekit.orbits import EquinoctialOrbit
 from org.orekit.utils import TimeStampedPVCoordinates
 from org.hipparchus.geometry.euclidean.threed import Vector3D
 
 # Internal imports
+from .angle import AngleType
 from brent import Constants
 
 
@@ -24,13 +25,14 @@ class Equinoctial:
     def from_cartesian(
         dates: List[datetime] | pd.DatetimeIndex,
         states: np.ndarray,
+        angle: AngleType = AngleType.MEAN,
         mu: float = Constants.DEFAULT_MU,
         frame: Frame = Constants.DEFAULT_ECI,
     ) -> np.ndarray:
         # Return Equinoctial elementss
         return np.array(
             [
-                Equinoctial._from_cartesian(date, state, mu, frame)
+                Equinoctial._from_cartesian(date, state, angle, mu, frame)
                 for date, state in zip(dates, states)
             ]
         )
@@ -39,6 +41,7 @@ class Equinoctial:
     def _from_cartesian(
         date: datetime | pd.Timestamp,
         state: np.ndarray,
+        angle: AngleType,
         mu: float = Constants.DEFAULT_MU,
         frame: Frame = Constants.DEFAULT_ECI,
     ) -> np.ndarray:
@@ -54,28 +57,38 @@ class Equinoctial:
         equinoctial = EquinoctialOrbit(pv, frame, mu)
 
         # Extract Equinoctial elements
-        # TODO: angle type as input
+        # NOTE: angles are wrapped to [0, 2pi)
         a = equinoctial.getA()
         ex = equinoctial.getEquinoctialEx()
         ey = equinoctial.getEquinoctialEy()
         hx = equinoctial.getHx()
         hy = equinoctial.getHy()
-        lm = equinoctial.getLM()
+        lt = equinoctial.getLv() % (2.0 * np.pi)  # True
+        lm = equinoctial.getLM() % (2.0 * np.pi)  # Mean
+        le = equinoctial.getLE() % (2.0 * np.pi)  # Eccentric
 
         # Return extracted Equinoctial elements
-        return np.array([a, ex, ey, hx, hy, lm])
+        if angle == AngleType.TRUE:
+            return np.array([a, ex, ey, hx, hy, lt])
+        elif angle == AngleType.MEAN:
+            return np.array([a, ex, ey, hx, hy, lm])
+        elif angle == AngleType.ECCENTRIC:
+            return np.array([a, ex, ey, hx, hy, le])
+        else:
+            raise RuntimeError("Unknown angle type")
 
     @staticmethod
     def to_cartesian(
         dates: List[datetime] | pd.DatetimeIndex,
         states: np.ndarray,
+        angle: AngleType = AngleType.MEAN,
         mu: float = Constants.DEFAULT_MU,
         frame: Frame = Constants.DEFAULT_ECI,
     ):
         # Return Cartesian states
         return np.array(
             [
-                Equinoctial._to_cartesian(date, state, mu, frame)
+                Equinoctial._to_cartesian(date, state, angle, mu, frame)
                 for date, state in zip(dates, states)
             ]
         )
@@ -84,6 +97,7 @@ class Equinoctial:
     def _to_cartesian(
         date: datetime | pd.Timestamp,
         state: np.ndarray,
+        angle: AngleType,
         mu: float = Constants.DEFAULT_MU,
         frame: Frame = Constants.DEFAULT_ECI,
     ):
@@ -91,7 +105,7 @@ class Equinoctial:
         dat = datetime_to_absolutedate(date)
 
         # Extract Equinoctial elements
-        a, ex, ey, hx, hy, lm = state
+        a, ex, ey, hx, hy, lon = state
 
         # Ensure that the variables are floats
         a = float(a)
@@ -99,18 +113,17 @@ class Equinoctial:
         ey = float(ey)
         hx = float(hx)
         hy = float(hy)
-        lm = float(lm)
+        lon = float(lon)
 
         # Create Equinoctial representation
-        # TODO: angle type as input
         equinoctial = EquinoctialOrbit(
             a,
             ex,
             ey,
             hx,
             hy,
-            lm,
-            PositionAngleType.MEAN,
+            lon,
+            angle.value,
             frame,
             dat,
             mu,
