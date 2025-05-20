@@ -5,4 +5,4 @@ from .numerical import (
     NumericalPropagatorParameters,
     ThalassaNumericalPropagator,
 )
-from .analytical import SP3Propagator, TLEPropagator
+from .analytical import SP3Propagator, TLEPropagator, TLEPropagatorMethod

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 # Standard imports
 from datetime import datetime
+from enum import Enum
 from glob import glob
 from functools import lru_cache
 
@@ -23,9 +24,19 @@ from brent import Constants
 from brent.propagators import Propagator, WrappedPropagator
 
 
+class TLEPropagatorMethod(Enum):
+    FORWARD = 1
+    BACKWARD = 2
+    BLENDED = 3
+
+
 class TLEPropagator(Propagator):
 
-    def __init__(self, tle: TLE | list[TLE]):
+    def __init__(
+        self,
+        tle: TLE | list[TLE],
+        method: TLEPropagatorMethod = TLEPropagatorMethod.FORWARD,
+    ):
         # Ensure list of TLEs
         tles = tle if not isinstance(tle, TLE) else [tle]
 
@@ -33,30 +44,99 @@ class TLEPropagator(Propagator):
         if len(tles) < 1:
             raise ValueError("Insufficent number of TLEs")
 
-        # Store epochs and propagators
+        # Generate epochs and propagators
         epochs = [absolutedate_to_datetime(itle.getDate()) for itle in tles]
         propagators = [
             WrappedPropagator(OrekitTLEPropagator.selectExtrapolator(itle))
             for itle in tles
         ]
 
-        # Store sorted epoch/propagator pairs
-        self.propagators = sorted(zip(epochs, propagators), key=lambda x: x[0])
+        # Sort propagators
+        indices = sorted(range(len(epochs)), key=lambda k: epochs[k])
 
-    def _propagate(self, date, frame=Constants.DEFAULT_ECI):
-        # Select propagator
-        epochs = np.array([propagator[0] for propagator in self.propagators])
-        idx: int = np.searchsorted(epochs, date, side="left")
+        # Store sorted epochs and propagators
+        self.epochs = np.array([epochs[idx] for idx in indices], dtype=np.datetime64)
+        self.propagators = [propagators[idx] for idx in indices]
 
-        # Clip index to prevent out-of-range list access
-        # NOTE: use last TLE in set if none available ahead of propagation date
-        idx = np.clip(idx, 0, len(epochs) - 1)
+        # Store propagation method
+        if method == TLEPropagatorMethod.FORWARD:
+            self._propagate_method = self._propagate_forward
+        elif method == TLEPropagatorMethod.BACKWARD:
+            self._propagate_method = self._propagate_backward
+        elif method == TLEPropagatorMethod.BLENDED:
+            self._propagate_method = self._propagate_blended
+        else:
+            raise RuntimeError("Unknown propagation method")
 
-        # Extract corresponding propagator
-        propagator = self.propagators[idx][1]
+    def _propagate_forward(self, date, frame=Constants.DEFAULT_ECI):
+        # Find preceeding index
+        indices = self.epochs > date
+        idx = np.argmax(indices) - 1
+
+        # Extract propagator
+        propagator = self.propagators[idx]
 
         # Return propagated state
         return propagator._propagate(date, frame)
+
+    def _propagate_backward(self, date, frame=Constants.DEFAULT_ECI):
+        # Find following index
+        indices = self.epochs > date
+        idx = np.argmax(indices)
+
+        # Extract propagator
+        propagator = self.propagators[idx]
+
+        # Return propagated state
+        return propagator._propagate(date, frame)
+
+    def _propagate_blended(self, date, frame=Constants.DEFAULT_ECI):
+        # Find preceeding index
+        indices = self.epochs > date
+        idx = np.argmax(indices) - 1
+
+        # Extract epochs
+        t1 = self.epochs[idx]
+        t2 = self.epochs[idx + 1]
+
+        # Calculate time deltas in seconds
+        dt = (date - t1) / np.timedelta64(1, "s")
+        dt12 = (t2 - t1) / np.timedelta64(1, "s")
+
+        # Calculate weighting
+        w = 0.5 + 0.5 * np.cos(np.pi * dt / dt12)
+        wp = - 0.5 * np.pi / dt12 * np.sin(np.pi * dt / dt12)
+
+        # Extract propagators
+        propagator1 = self.propagators[idx]
+        propagator2 = self.propagators[idx + 1]
+
+        # Calculate states
+        state1 = propagator1._propagate(date, frame)
+        state2 = propagator2._propagate(date, frame)
+
+        # Extract positions and velocities
+        p1, v1 = state1[0:3], state1[3:6]
+        p2, v2 = state2[0:3], state2[3:6]
+
+        # Blend states
+        p = w * p1 + (1 - w) * p2
+        v = w * v1 + (1 - w) * v2 + wp * (p1 - p2)
+
+        # Return blended state
+        return np.concat((p, v))
+
+    def _propagate(self, date, frame=Constants.DEFAULT_ECI):
+        # Check if date is outside epoch bounds
+        if date < self.epochs[0]:
+            # Return state propagated with first propagator
+            return self.propagators[0]._propagate(date, frame)
+        elif date >= self.epochs[-1]:
+            # Return state propagated with last propagator
+            return self.propagators[-1]._propagate(date, frame)
+
+        # Return state propagated with method
+        return self._propagate_method(date, frame)
 
     @lru_cache(maxsize=256)
     @staticmethod
@@ -92,6 +172,7 @@ class TLEPropagator(Propagator):
         tles.sort_values(["EPOCH", "CREATION_DATE"], inplace=True)
 
         # Drop duplicate TLEs, keeping the most recently issued instances
+        # TODO: check for TLEs in close temporal proximity
         tles.drop_duplicates("EPOCH", keep="last", inplace=True)
 
         # Generate TLEs
@@ -101,6 +182,7 @@ class TLEPropagator(Propagator):
         ]
 
         # Extract TLE subset
+        # TODO: move date filtering to DataFrame?
         tles = [
             tle
             for tle in tles
@@ -119,9 +201,11 @@ class TLEPropagator(Propagator):
         end: datetime = datetime.max,
         norad: int | None = None,
         cospar: str | None = None,
+        *args,
+        **kwargs,
     ) -> TLEPropagator:
         # Load TLEs
         tles = cls._load(path, start, end, norad, cospar)
 
         # Return TLE propagator
-        return TLEPropagator(tles)
+        return TLEPropagator(tles, *args, **kwargs)
