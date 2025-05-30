@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 # Standard imports
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from glob import glob
 from functools import lru_cache
@@ -36,6 +36,7 @@ class TLEPropagator(Propagator):
         self,
         tle: TLE | list[TLE],
         method: TLEPropagatorMethod = TLEPropagatorMethod.FORWARD,
+        expiry: None | timedelta | np.timedelta64 = None,
     ):
         # Ensure list of TLEs
         tles = tle if not isinstance(tle, TLE) else [tle]
@@ -68,10 +69,29 @@ class TLEPropagator(Propagator):
         else:
             raise RuntimeError("Unknown propagation method")
 
+        # Store expiry
+        self.expiry = expiry
+
+    def _is_expired(self, t1, t2) -> bool:
+        # Return valid if expiry not set
+        if self.expiry is None:
+            return False
+
+        # Return expired if difference between dates is larger than TLE expiry
+        return np.abs(t1 - t2) > self.expiry
+
     def _propagate_forward(self, date, frame=Constants.DEFAULT_ECI):
         # Find preceeding index
         indices = self.epochs > date
         idx = np.argmax(indices) - 1
+        idx = np.clip(idx, 0, len(self.epochs) - 1)
+
+        # Extract epoch
+        epoch = self.epochs[idx]
+
+        # Check if TLE has expired
+        if self._is_expired(epoch, date):
+            raise RuntimeError("TLE has expired")
 
         # Extract propagator
         propagator = self.propagators[idx]
@@ -83,6 +103,14 @@ class TLEPropagator(Propagator):
         # Find following index
         indices = self.epochs > date
         idx = np.argmax(indices)
+        idx = np.clip(idx, 0, len(self.epochs) - 1)
+
+        # Extract epoch
+        epoch = self.epochs[idx]
+
+        # Check if TLE has expired
+        if self._is_expired(epoch, date):
+            raise RuntimeError("TLE has expired")
 
         # Extract propagator
         propagator = self.propagators[idx]
@@ -99,13 +127,17 @@ class TLEPropagator(Propagator):
         t1 = self.epochs[idx]
         t2 = self.epochs[idx + 1]
 
+        # Check if TLEs have expired
+        if self._is_expired(t1, date) or self._is_expired(t2, date):
+            raise RuntimeError("TLE has expired")
+
         # Calculate time deltas in seconds
         dt = (date - t1) / np.timedelta64(1, "s")
         dt12 = (t2 - t1) / np.timedelta64(1, "s")
 
         # Calculate weighting
         w = 0.5 + 0.5 * np.cos(np.pi * dt / dt12)
-        wp = - 0.5 * np.pi / dt12 * np.sin(np.pi * dt / dt12)
+        wp = -0.5 * np.pi / dt12 * np.sin(np.pi * dt / dt12)
 
         # Extract propagators
         propagator1 = self.propagators[idx]
@@ -116,24 +148,24 @@ class TLEPropagator(Propagator):
         state2 = propagator2._propagate(date, frame)
 
         # Extract positions and velocities
-        p1, v1 = state1[0:3], state1[3:6]
-        p2, v2 = state2[0:3], state2[3:6]
+        r1, v1 = state1[0:3], state1[3:6]
+        r2, v2 = state2[0:3], state2[3:6]
 
         # Blend states
-        p = w * p1 + (1 - w) * p2
-        v = w * v1 + (1 - w) * v2 + wp * (p1 - p2)
+        r = w * r1 + (1 - w) * r2
+        v = w * v1 + (1 - w) * v2 + wp * (r1 - r2)
 
         # Return blended state
-        return np.concat((p, v))
+        return np.concat((r, v))
 
     def _propagate(self, date, frame=Constants.DEFAULT_ECI):
         # Check if date is outside epoch bounds
-        if date < self.epochs[0]:
+        if date <= self.epochs[0]:
             # Return state propagated with first propagator
-            return self.propagators[0]._propagate(date, frame)
+            return self._propagate_backward(date, frame)
         elif date >= self.epochs[-1]:
             # Return state propagated with last propagator
-            return self.propagators[-1]._propagate(date, frame)
+            return self._propagate_forward(date, frame)
 
         # Return state propagated with method
         return self._propagate_method(date, frame)
