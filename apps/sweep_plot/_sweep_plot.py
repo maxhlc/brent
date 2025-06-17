@@ -1,5 +1,4 @@
 # Standard imports
-from copy import deepcopy
 from math import ceil
 
 # Third-party imports
@@ -10,15 +9,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# Store pre-execution Matplotlib parameters
-RCPARAMS = deepcopy(plt.rcParams)
-
 # Set output figure size
 FIGSIZE = (3.25, 3.25)
 FIGSIZE_LARGE = (6.6, 8.4)
-
-# Set font size
-plt.rcParams.update({"font.size": 7})
 
 # Declare name map
 SP3MAP = {
@@ -151,7 +144,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         extend = "max" if np.nanmax(z) > zupper else "neither"
 
         # Plot mesh
-        plt.contourf(
+        ctf = plt.contourf(
             x[idx],
             y[idx],
             z[idx],
@@ -160,6 +153,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
             cmap=cmap,
             extend=extend,
         )
+        ctf.set_rasterized(True)
 
         # Set limits
         # TODO: y-axis
@@ -181,6 +175,7 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
                 for n in range(0, int(zupper // INTERVALS[object]) + 1)
             ]
         )
+        cbar.solids.set_rasterized(True)
 
         # Plot threshold
         cbar.ax.plot([0, 1], [THRESHOLDS[object]] * 2, "r")
@@ -195,10 +190,11 @@ def plot_window_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.tight_layout()
 
         # Export plot
-        plt.savefig(f"{fname}_duration_rmse_{object}.png", dpi=600)
+        plt.savefig(f"{fname}_duration_rmse_{object}.pdf", dpi=200)
 
         # Close plot
         plt.close()
+
 
 def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
     # Get unique objects (preserving order from limits list)
@@ -295,6 +291,7 @@ def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
             cmap=cmap,
             extend=extend,
         )
+        ctf.set_rasterized(True)
 
         # Set limits
         # TODO: y-axis
@@ -317,6 +314,7 @@ def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
                 for n in range(0, int(zupper // INTERVALS[object]) + 1)
             ]
         )
+        cbar.solids.set_rasterized(True)
 
         # Plot threshold
         cbar.ax.plot([0, 1], [THRESHOLDS[object]] * 2, "r")
@@ -335,10 +333,11 @@ def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
         ax.set_ylabel("Fit Window Size [days]")
 
     # Export plot
-    plt.savefig(f"{fname}_duration_rmse_mesh.png", dpi=600)
+    plt.savefig(f"{fname}_duration_rmse_mesh.pdf", dpi=200)
 
     # Close plot
     plt.close()
+
 
 def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
     # Calculate limits
@@ -402,7 +401,8 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         fig, ax = plt.subplots(figsize=FIGSIZE)
 
         # Plot mesh
-        plt.contourf(x[idx], y[idx], z[idx])
+        ctf = plt.contourf(x[idx], y[idx], z[idx])
+        ctf.set_rasterized(True)
 
         # Set limits
         # TODO: y-axis
@@ -414,7 +414,8 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
 
         # Add colour bar
         # TODO: configure same as plot_window_mesh
-        plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [km]")
+        cbar = plt.colorbar(label=f"Position RMSE (w.r.t. {referencePropagator}) [km]")
+        cbar.solids.set_rasterized(True)
 
         # Format dates
         fig.autofmt_xdate()
@@ -426,7 +427,7 @@ def plot_sample_mesh(df: pd.DataFrame, fname: str) -> None:
         plt.tight_layout()
 
         # Export plot
-        plt.savefig(f"{fname}_samples_rmse_{object}.png", dpi=600)
+        plt.savefig(f"{fname}_samples_rmse_{object}.pdf", dpi=200)
 
         # Close plot
         plt.close()
@@ -504,7 +505,7 @@ def plot_proportion(df: pd.DataFrame, fname: str) -> None:
             plt.tight_layout()
 
             # Export plot
-            plt.savefig(f"{fname}_proportion_{samples}S_{days}D.png", dpi=600)
+            plt.savefig(f"{fname}_proportion_{samples}S_{days}D.pdf", dpi=200)
 
             # Close plot
             plt.close()
@@ -570,7 +571,7 @@ def plot_errors(df: pd.DataFrame, fname: str) -> None:
             plt.tight_layout()
 
             # Export plot
-            plt.savefig(f"{fname}_rmse_{samples}S_{days}D.png", dpi=600)
+            plt.savefig(f"{fname}_rmse_{samples}S_{days}D.pdf", dpi=200)
 
             # Close plot
             plt.close()
@@ -629,8 +630,7 @@ def plot_window_mean(df: pd.DataFrame, fname: str) -> None:
     plt.grid()
 
     # Export plot
-    plt.savefig(f"{fname}_duration_mean_rmse.png", dpi=600)
-    plt.savefig(f"{fname}_duration_mean_rmse.pdf")
+    plt.savefig(f"{fname}_duration_mean_rmse.pdf", dpi=200)
 
 
 def preprocess(df: pd.DataFrame) -> pd.DataFrame:
@@ -697,39 +697,39 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main(input: str) -> None:
-    # Load results
-    df = pd.read_pickle(input)
+    with plt.rc_context():
+        # Set font size
+        plt.rcParams.update({"font.size": 8})
 
-    # Preprocess results
-    df = preprocess(df)
+        # Load results
+        df = pd.read_pickle(input)
 
-    # Calculate number of window and sample sizes
-    nwindow = len(np.unique(df["fitDuration"]))
-    nsample = len(np.unique(df["fitSamples"]))
+        # Preprocess results
+        df = preprocess(df)
 
-    # Check window and sample size compatibility
-    # TODO: consider merged tables
-    if (nwindow > 1) and (nsample == 1):
-        # Plot window mean
-        plot_window_mean(df, input)
+        # Calculate number of window and sample sizes
+        nwindow = len(np.unique(df["fitDuration"]))
+        nsample = len(np.unique(df["fitSamples"]))
 
-        # Plot window mesh
-        plot_window_mesh(df, input)
+        # Check window and sample size compatibility
+        # TODO: consider merged tables
+        if (nwindow > 1) and (nsample == 1):
+            # Plot window mean
+            plot_window_mean(df, input)
 
-        # Plot combined window mesh
-        plot_window_mesh_combined(df, input)
-    elif (nwindow == 1) and (nsample > 1):
-        # Plot sample mesh
-        plot_sample_mesh(df, input)
-    else:
-        print("Incompatible number of windows and samples")
+            # Plot window mesh
+            plot_window_mesh(df, input)
 
-    # Plot proportions
-    plot_proportion(df, input)
+            # Plot combined window mesh
+            plot_window_mesh_combined(df, input)
+        elif (nwindow == 1) and (nsample > 1):
+            # Plot sample mesh
+            plot_sample_mesh(df, input)
+        else:
+            print("Incompatible number of windows and samples")
 
-    # Plot error histories
-    plot_errors(df, input)
+        # Plot proportions
+        plot_proportion(df, input)
 
-    # Reset changes to Matplotlib parameters
-    # TODO: not executed in cases of crash etc., switch to context manager
-    plt.rcParams.update(RCPARAMS)
+        # Plot error histories
+        plot_errors(df, input)
