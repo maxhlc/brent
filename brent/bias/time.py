@@ -98,7 +98,8 @@ class TimePositionBias(Bias):
         # Calculate along-track error
         rmag = np.linalg.norm(states[:, 0:3], axis=1)
         rtn = RTN.getTransform(states)
-        along_track = RTN.transform(rtn, states - reference)[:, 1] / rmag
+        delta = -(reference - states)
+        along_track = RTN.transform(rtn, delta)[:, 1] / rmag
 
         # Extract fit data
         y = along_track.ravel()
@@ -226,7 +227,8 @@ class TimePositionCombinedBias(Bias):
         # Calculate along-track error
         rmag = np.linalg.norm(states[:, 0:3], axis=1)
         rtn = RTN.getTransform(states)
-        along_track = RTN.transform(rtn, states - reference)[:, 1] / rmag
+        delta = -(reference - states)
+        along_track = RTN.transform(rtn, delta)[:, 1] / rmag
 
         # Extract fit data
         y = along_track.ravel()
