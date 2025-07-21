@@ -1,3 +1,6 @@
 [submodule "external/thalassa"]
 	path = external/thalassa
 	url = https://github.com/maxhlc/thalassa
+[submodule "data/orekit"]
+	path = data/orekit
+	url = https://gitlab.orekit.org/orekit/orekit-data/
