@@ -1,6 +1,7 @@
 # Standard imports
 from datetime import datetime, timedelta
 import multiprocessing as mp
+import os
 import queue
 
 # Third-party imports
@@ -71,6 +72,10 @@ class ThalassaProcess(mp.Process):
         paths = self.getPaths()
         settings = self.getSettings()
         spacecraft = self.getSpacecraft(self.parameters)
+
+        # Change working directory
+        # NOTE: this is to ensure that SPICE kernels are loaded from the data directory
+        os.chdir(brent.paths.ROOT_DIR)
 
         # Create propagator
         propagator = pythalassa.Propagator(model, paths, settings, spacecraft)
