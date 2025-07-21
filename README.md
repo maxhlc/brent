@@ -5,6 +5,16 @@ BRENT (Batch Regression for Estimating Noise in TLEs) is a tool under developmen
 
 ### Installation
 
+The following command can be used to clone the repository and its submodules:
+```
+git clone --recurse-submodules https://github.com/maxhlc/brent
+```
+
+Alternatively, the submodules can be initialised at a later point:
+```
+git submodule update --init --recursive
+```
+
 #### Python
 An environment file is provided to create a conda environment with all of the required dependencies:
 
@@ -21,7 +31,7 @@ conda activate brent
 #### Orekit
 The Python wrappers for Orekit are distributed through the conda package manager. No further configuration should be required to install Orekit.
 
-Orekit requires data files (including physical parameters, reference frame parameters, etc.) which can be obtained from the [Orekit Data repository](https://gitlab.orekit.org/orekit/orekit-data). This must be extracted into the `./data/orekit/` directory.
+Orekit requires data files (including physical parameters, reference frame parameters, etc.) which can be obtained from the [Orekit Data repository](https://gitlab.orekit.org/orekit/orekit-data). These are automatically included as a git submodule.
 
 #### THALASSA
 THALASSA must be compiled (including its Python bindings) before it can be used by BRENT. THALASSA uses the CMake build system, and can be configured and built with the following commands:
@@ -48,7 +58,7 @@ NOTE: SPICE kernels are loaded relative to the current working directory, unlike
 
 The main script used with BRENT is `main.py` which is the entry point for various applications in the `./apps/` directory. Many of these use configuration files with examples provided in the `./input/` directory.
 
-TLEs and ILRS orbit product data are expected in JSON and SP3 formats respectively.
+TLEs and ILRS/DORIS/IGS orbit product data are expected in JSON and SP3 formats respectively.
 
 ## Authors
 * Max Hallgarten La Casta (m.hallgarten-la-casta21@imperial.ac.uk)
