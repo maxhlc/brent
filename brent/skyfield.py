@@ -54,6 +54,22 @@ class SkyfieldObject:
         return states
 
     @classmethod
+    def cartesian(
+        cls,
+        dates,
+        central: SkyfieldObject | Type[SkyfieldObject],
+    ) -> np.ndarray:
+        # Calculate states
+        states = cls.states(dates, central)
+
+        # Extract positions and velocities (in ICRF, centred on body)
+        xyz: np.ndarray = states.xyz.m
+        vxyz: np.ndarray = states.velocity.m_per_s
+
+        # Return state vectors
+        return np.concat((xyz.T, vxyz.T), axis=1)
+
+    @classmethod
     def keplerian(
         cls,
         dates,
