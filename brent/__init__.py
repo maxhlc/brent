@@ -1,3 +1,7 @@
+# TODO: docstrings
+# TODO: type hinting
+# TODO: standardise datetime/timedelta type (probably NumPy)
+
 # Standard imports
 import sys
 
