@@ -143,7 +143,7 @@ class TimePositionCombinedBias(Bias):
         frequency = 2.0 * np.pi / self.b
 
         # Calculate amplitudes
-        amplitude = self.e * np.sin(raan + self.f) + self.g
+        amplitude = self.e * np.cos(raan + self.f) + self.g
 
         # Return along-track bias
         return amplitude * np.sin(frequency * (t + self.c)) + self.d

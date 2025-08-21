@@ -123,7 +123,7 @@ class MoonAnomalyPositionCombinedBias(Bias):
 
     def _model(self, ma: np.ndarray, raan: np.ndarray) -> np.ndarray:
         # Calculate amplitude
-        amplitude = self.e * np.sin(raan + self.f) + self.g
+        amplitude = self.e * np.cos(raan + self.f) + self.g
 
         # Return along-track bias
         return amplitude * np.sin(ma + self.c) + self.d
