@@ -208,6 +208,7 @@ def plot_window_mesh_combined(df: pd.DataFrame, fname: str) -> None:
         ncols=2,
         sharex=True,
         sharey=True,
+        squeeze=False,
         figsize=FIGSIZE_LARGE,
         constrained_layout=True,
     )
