@@ -266,7 +266,7 @@ class TimePositionCombinedBias(Bias):
         amplitude = self.e * np.cos(raan + self.f) + self.g
 
         # Return along-track bias
-        return amplitude * np.sin(frequency * (t + self.c)) + self.d
+        return amplitude * np.cos(frequency * (t + self.c)) + self.d
 
     def biases(self, dates, states) -> np.ndarray:
         # Calculate radial distances
