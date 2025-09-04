@@ -56,8 +56,8 @@ THRESHOLDS = {
     "Etalon 2": 1.5,
     # Test
     "Navstar 1": 5,
-    "Navstar 2": 20,
-    "Astra 1E": 20,
+    "Navstar 2": 15,
+    "Astra 1E": 15,
     "Astra 1H": 20,
 }
 
@@ -660,6 +660,14 @@ def preprocess(df: pd.DataFrame) -> pd.DataFrame:
         df_.rename(columns={"duration": "fitDuration"}, inplace=True)
     if "fitSamples" not in df_.columns:
         df_.rename(columns={"samples": "fitSamples"}, inplace=True)
+    df_["name"] = df_["name"].replace(
+        {
+            "NAVSTAR 1": "Navstar 1",
+            "NAVSTAR 2": "Navstar 2",
+            "ASTRA 1E": "Astra 1E",
+            "ASTRA 1H": "Astra 1H",
+        },
+    )
 
     # Calculate fit end
     # TODO: rename start/duration
