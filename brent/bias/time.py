@@ -303,18 +303,25 @@ class TimePositionCombinedBias(Bias):
         f: float,
         g: float,
     ) -> tuple[float, float, float, float, float, float]:
-        # Wrap phase by period
-        c = Wrap.half(c, b)
+        # Check for negative offset of RAAN model
+        if g < 0.0:
+            # Flip RAAN model amplitude and offset
+            e *= -1.0
+            g *= -1.0
 
-        # Check for negative amplitude
+            # Update time-based phase by half-period
+            c += 0.5 * b
+
+        # Check for negative amplitude of RAAN model
         if e < 0.0:
-            # Flip amplitude sign
+            # Flip RAAN model amplitude sign
             e *= -1.0
 
-            # Update phase by half period
+            # Update RAAN model phase by half period
             f += np.pi
 
-        # Wrap phase by period
+        # Wrap phases by period
+        c = Wrap.half(c, b)
         f = Wrap.half(f)
 
         # Return wrapped parameters
