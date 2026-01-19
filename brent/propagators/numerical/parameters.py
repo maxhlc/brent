@@ -27,3 +27,5 @@ class NumericalPropagatorParameters:
     drag_estimate: bool
     cd: float
     area_drag: float
+
+    # TODO: add tolerance

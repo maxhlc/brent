@@ -95,7 +95,7 @@ class ThalassaProcess(mp.Process):
         # Put states onto results queue
         self.results.put(states)
 
-    def propagate(self, timeout: float) -> np.ndarray:
+    def propagate(self, timeout: float | None = None) -> np.ndarray:
         # TODO: ensure only called in main process?
         # Try to propagate
         try:
@@ -110,7 +110,7 @@ class ThalassaProcess(mp.Process):
             raise RuntimeError(f"Propagation timed out after {timeout} seconds")
         finally:
             # Terminate process
-            self.terminate()
+            self.kill()
 
         # Return propagated states
         return states
@@ -181,7 +181,7 @@ class ThalassaProcess(mp.Process):
         # TODO: set
         settings = pythalassa.Settings()
         settings.eqs = pythalassa.EDROMO_C  # TODO: add options for different methods?
-        settings.tol = 1e-10
+        settings.tol = 1e-12  # TODO: add option to change tolerance?
 
         # Return settings
         return settings
@@ -227,7 +227,12 @@ class ThalassaNumericalPropagator(Propagator):
     def _propagate(self, date, frame=Constants.DEFAULT_ECI) -> np.ndarray:
         raise RuntimeError("This method should not be called at any time")
 
-    def propagate(self, dates, frame=Constants.DEFAULT_ECI, timeout: float = 10.0):
+    def propagate(
+        self,
+        dates,
+        frame=Constants.DEFAULT_ECI,
+        timeout: float | None = 120.0,
+    ):
         # NOTE: the propagator is executed as a subprocess to avoid issues encountered when
         #       creating and destroying large numbers of propagators using SPICE kernels
 
@@ -246,6 +251,7 @@ class ThalassaNumericalPropagator(Propagator):
         # Check if first date matches stored initial date
         if dates[0] != self.date:
             # Propagate state to initial date
+            # TODO: need to test that this is behaving properly
             state = self.propagate(np.array([self.date, dates[0]]))[1, :]
         else:
             # Use stored initial state
