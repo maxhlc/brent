@@ -93,7 +93,7 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
         # Return propagated states
         return states
 
-    def estimate(self) -> ThalassaNumericalPropagator:
+    def estimate(self, guess: np.ndarray | None = None) -> ThalassaNumericalPropagator:
         # Extract the dates, states, and model
         dates = self.dates
         states = self.states
@@ -117,7 +117,10 @@ class ThalassaBatchLeastSquares(BatchLeastSquares):
 
         # Set initial guess
         # TODO: ratios (e.g. CR * A / m) instead of the coefficient alone
-        p0 = np.copy(states[0, :])
+        if guess is None:
+            p0 = np.copy(states[0, :])
+        else:
+            p0 = np.copy(guess)
         if self.srp_estimate:
             p0 = np.append(p0, model.cr)
         if self.drag_estimate:

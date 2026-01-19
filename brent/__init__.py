@@ -1,6 +1,7 @@
 # TODO: docstrings
 # TODO: type hinting
 # TODO: standardise datetime/timedelta type (probably NumPy)
+# TODO: fix bug where THALASSA breaks following the use of Matplotlib
 
 # Standard imports
 import sys
