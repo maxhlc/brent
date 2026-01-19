@@ -86,6 +86,10 @@ class OrekitBatchLeastSquares(BatchLeastSquares):
         model: NumericalPropagatorParameters,
         covarianceProvider: Covariance,
     ):
+        # Store observation dates and states
+        self.dates = pd.to_datetime(np.copy(dates))
+        self.states = np.copy(states)
+
         # Create decomposer and optimiser
         matrixDecomposer = QRDecomposer(1e-11)
         optimiser = GaussNewtonOptimizer(matrixDecomposer, False)
@@ -104,7 +108,7 @@ class OrekitBatchLeastSquares(BatchLeastSquares):
             raise ValueError("Cannot estimate drag if disabled in model")
 
         # Create builder
-        builder = OrekitNumericalPropagator.builder(dates[0], states[0, :], model)
+        builder = OrekitNumericalPropagator.builder(self.dates[0], self.states[0, :], model)
 
         # Create estimator
         estimator = BatchLSEstimator(optimiser, builder)
