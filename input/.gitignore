@@ -1,0 +1,9 @@
+# Ignore all data
+*
+
+# Except .gitignore and input examples
+!.gitignore
+!cddis.json.example
+!space_track.json.example
+!stle.json.example
+!sweep.json.example

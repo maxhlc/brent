@@ -1,0 +1,9 @@
+{
+    "sp3path": "./data/sp3/lageos1/*.sp3",
+    "sp3id": "L51",
+    "tlepath": "./data/tle/8820.json",
+    "stlename": "LAGEOS-1 (SYNTHETIC)",
+    "duration": 7,
+    "bstar": false,
+    "outputpath": "./output/stle/"
+}

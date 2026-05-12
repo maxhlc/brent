@@ -1,0 +1,60 @@
+# Future imports
+from __future__ import annotations
+
+# Standard imports
+from dataclasses import dataclass, asdict
+
+
+@dataclass
+class SEMHeader:
+
+    # Number of records
+    records: int
+
+    # File title
+    title: str
+
+    # GPS week
+    week: int
+
+    # Seconds since start of GPS week
+    seconds: int
+
+    # Year
+    year: None | int = None
+
+    def asdict(self) -> dict[str, int | str]:
+        # Return header as dictionary
+        return asdict(self)
+
+    def serialise(self) -> str:
+        # Declare lines
+        lines = []
+
+        # Add lines
+        lines.append(f"{self.records:02d}  {self.title}")
+        #
+        lines.append(f" {self.week:04d} {self.seconds:06d}")
+        #
+        lines.append("")
+
+        # Return serialised header
+        return "\n".join(lines)
+
+    @classmethod
+    def deserialise(cls, string: str, year: None | int = None) -> SEMHeader:
+        # Split string into lines
+        lines = string.splitlines()
+
+        # Split lines into words
+        lines = [line.split() for line in lines]
+
+        # Deserialise values
+        records = int(lines[0][0])
+        title = lines[0][1]  # TODO: deal with titles containing spaces
+        #
+        week = int(lines[1][0])
+        seconds = int(lines[1][1])
+
+        # Return parsed header
+        return SEMHeader(records, title, week, seconds, year)
